@@ -1477,19 +1477,33 @@ export default function App() {
                         >
                           Dành tặng cho tâm trạng nào?
                         </label>
-                        <select
-                          id="wishMoodTagSelect"
-                          value={wishMood}
-                          onChange={(e) => setWishMood(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-2xl bg-white border-[2.5px] border-[#593A47] text-sm font-bold text-[#593A47] focus:outline-none focus:ring-4 focus:ring-pink-200"
-                        >
-                          <option value="all">🌈 Tất cả mọi tâm trạng</option>
-                          <option value="bad">🌧️ Đang buồn / Tệ (Cần an ủi)</option>
-                          <option value="tired">☁️ Đang mệt mỏi (Cần nạp năng lượng)</option>
-                          <option value="normal">🍀 Ngày bình yên (Nhẹ nhàng)</option>
-                          <option value="excited">💖 Đang hào hứng (Truyền cảm hứng)</option>
-                          <option value="happy">✨ Đang hạnh phúc (Nhân đôi niềm vui)</option>
-                        </select>
+                        <div className="relative">
+                          <select
+                            id="wishMoodTagSelect"
+                            value={wishMood}
+                            onChange={(e) => setWishMood(e.target.value)}
+                            className="w-full appearance-none px-4 pr-12 py-2.5 rounded-2xl bg-white border-[2.5px] border-[#593A47] text-sm font-bold text-[#593A47] focus:outline-none focus:ring-4 focus:ring-pink-200"
+                          >
+                            <option value="all">🌈 Tất cả mọi tâm trạng</option>
+                            <option value="bad">🌧️ Đang buồn / Tệ (Cần an ủi)</option>
+                            <option value="tired">☁️ Đang mệt mỏi (Cần nạp năng lượng)</option>
+                            <option value="normal">🍀 Ngày bình yên (Nhẹ nhàng)</option>
+                            <option value="excited">💖 Đang hào hứng (Truyền cảm hứng)</option>
+                            <option value="happy">✨ Đang hạnh phúc (Nhân đôi niềm vui)</option>
+                          </select>
+                          <svg
+                            aria-hidden="true"
+                            className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#593A47]"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="m6 9 6 6 6-6" />
+                          </svg>
+                        </div>
                       </div>
                     </div>
 
@@ -1563,7 +1577,7 @@ export default function App() {
                 ✕
               </button>
 
-              <div className="flex flex-column md:flex-row items-center justify-between gap-2 pb-4 mb-5 border-b-[2.5px] border-[#593A47]">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-2 pb-4 mb-5 border-b-[2.5px] border-[#593A47]">
                 <div className="flex items-center gap-2.5">
                   <div className="w-11 h-11 rounded-2xl bg-[#FFF3B0] border-[2.5px] border-[#593A47] flex items-center justify-center text-2xl shadow-[0_3px_0_#593A47]">
                     💌
@@ -1594,12 +1608,12 @@ export default function App() {
                 </blockquote>
               </div>
 
-              <div className="flex flex-column md:flex-row items-center justify-between text-xs sm:text-sm font-extrabold text-[#7D5867] mt-5 pt-3 border-t-2 border-dashed border-[#E5C5D2]">
+              <div className="flex flex-col md:flex-row items-center justify-between text-xs sm:text-sm font-extrabold text-[#7D5867] mt-5 pt-3 border-t-2 border-dashed border-[#E5C5D2]">
                 <span>🕒 Mở lúc {activeLetter.timeStr} hôm nay</span>
                 <span className="text-[#593A47]">Người gửi: {activeLetter.sender || 'Người lạ'}</span>
               </div>
 
-              <div className="mt-6 flex flex-wrap items-center justify-end gap-2.5">
+              <div className="mt-6 flex flex-wrap items-center justify-center md:justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={handleCopyQuote}
