@@ -1563,7 +1563,7 @@ export default function App() {
                 ✕
               </button>
 
-              <div className="flex items-center justify-between gap-2 pb-4 mb-5 border-b-[2.5px] border-[#593A47]">
+              <div className="flex flex-column md:flex-row items-center justify-between gap-2 pb-4 mb-5 border-b-[2.5px] border-[#593A47]">
                 <div className="flex items-center gap-2.5">
                   <div className="w-11 h-11 rounded-2xl bg-[#FFF3B0] border-[2.5px] border-[#593A47] flex items-center justify-center text-2xl shadow-[0_3px_0_#593A47]">
                     💌
