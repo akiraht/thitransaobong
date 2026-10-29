@@ -1483,7 +1483,7 @@ export default function App() {
                 <div className="py-6 px-4 rounded-2xl bg-gradient-to-r from-[#FFF3B0] via-[#FFE4EE] to-[#E2F9F0] border-[3px] border-[#593A47] text-center">
                   <div className="text-4xl mb-2">🌈✨</div>
                   <p className="text-lg sm:text-xl font-extrabold text-[#593A47]">
-                    cám ơn bạn đã gửi lời chúc đến trời
+                    Cám ơn bạn đã gửi lời chúc đến bầu trời sao
                   </p>
                 </div>
               )}
