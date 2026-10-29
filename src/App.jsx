@@ -1336,7 +1336,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={handleDrawStar}
-                    className="kawaii-btn mt-2 bg-gradient-to-r from-[#FF85A9] to-[#FFA6C1] hover:from-[#FF709A] hover:to-[#FF94B4] text-[#593A47] font-extrabold text-base sm:text-lg px-7 py-3.5 flex items-center gap-2.5"
+                    className="kawaii-btn mt-2 bg-gradient-to-r from-[#f6cad7] to-[#f57299] hover:from-[#FF709A] hover:to-[#FF94B4] text-[#593A47] font-extrabold text-base sm:text-lg px-7 py-3.5 flex items-center gap-2.5"
                   >
                     <span>🧘</span>
                     <span>
@@ -1594,7 +1594,7 @@ export default function App() {
                 </blockquote>
               </div>
 
-              <div className="flex items-center justify-between text-xs sm:text-sm font-extrabold text-[#7D5867] mt-5 pt-3 border-t-2 border-dashed border-[#E5C5D2]">
+              <div className="flex flex-column md:flex-row items-center justify-between text-xs sm:text-sm font-extrabold text-[#7D5867] mt-5 pt-3 border-t-2 border-dashed border-[#E5C5D2]">
                 <span>🕒 Mở lúc {activeLetter.timeStr} hôm nay</span>
                 <span className="text-[#593A47]">Người gửi: {activeLetter.sender || 'Người lạ'}</span>
               </div>
@@ -1605,14 +1605,14 @@ export default function App() {
                   onClick={handleCopyQuote}
                   className="kawaii-btn bg-[#E2F9F0] hover:bg-[#C7F2E0] text-[#593A47] font-extrabold text-xs sm:text-sm px-4 py-2"
                 >
-                  📋 Sao chép lời chúc
+                  Sao chép lời chúc
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveLetter(null)}
                   className="kawaii-btn bg-[#FF85A9] hover:bg-[#FF6E99] text-[#593A47] font-extrabold text-xs sm:text-sm px-5 py-2"
                 >
-                  Cất vào tim 💖
+                  Cất vào tim ❤️‍🔥
                 </button>
               </div>
             </div>
