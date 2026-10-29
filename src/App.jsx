@@ -378,11 +378,21 @@ const DEFAULT_SHEET_WISHES = [
 ];
 
 function getTodayDateString() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  try {
+    // Luôn lấy ngày theo múi giờ Việt Nam (Asia/Ho_Chi_Minh - GMT+7) để reset đúng 00:00 giờ VN
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date());
+  } catch (e) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
 }
 
 function formatDurationHMS(ms) {
@@ -407,6 +417,7 @@ function loadInitialState() {
     const fresh = {
       dateKey: todayStr,
       selectedMood: null,
+      sharedRemainingStars: TOTAL_INITIAL_STARS,
       drawnStarIds: [],
       lastDrawTimestamp: 0,
       todayHistory: [],
@@ -417,6 +428,12 @@ function loadInitialState() {
     return fresh;
   }
 
+  if (typeof saved.sharedRemainingStars !== 'number') {
+    saved.sharedRemainingStars = Math.max(
+      0,
+      TOTAL_INITIAL_STARS - (saved.drawnStarIds ? saved.drawnStarIds.length : 0)
+    );
+  }
   if (!Array.isArray(saved.sheetWishes)) {
     saved.sheetWishes = DEFAULT_SHEET_WISHES;
   }
@@ -559,7 +576,35 @@ export default function App() {
     });
   };
 
-  // 1-second interval for 4h cooldown & 00:00 daily reset check
+  // Đồng bộ số lượng sao dùng chung (2000) & danh sách lời chúc đã duyệt từ Google Sheet
+  const syncFromGoogleSheet = () => {
+    if (!GOOGLE_SHEET_SCRIPT_URL || !GOOGLE_SHEET_SCRIPT_URL.startsWith('http')) return;
+    fetch(GOOGLE_SHEET_SCRIPT_URL)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data) return;
+        updateState((prev) => {
+          const next = { ...prev };
+          if (typeof data.remainingStars === 'number') {
+            next.sharedRemainingStars = Math.max(0, data.remainingStars);
+          }
+          if (Array.isArray(data.wishes)) {
+            next.sheetWishes = data.wishes.map((w, idx) => ({
+              id: 'GSHEET-' + idx,
+              timestamp: w.timestamp || '',
+              nickname: w.nickname || 'Người lạ',
+              mood: w.mood || 'all',
+              message: w.message || '',
+              approved: true
+            }));
+          }
+          return next;
+        });
+      })
+      .catch(() => {});
+  };
+
+  // 1-second interval for 4h cooldown & 00:00 Vietnam time daily reset check
   useEffect(() => {
     const interval = setInterval(() => {
       const currentTs = Date.now();
@@ -572,6 +617,7 @@ export default function App() {
             ...prev,
             dateKey: todayStr,
             selectedMood: null,
+            sharedRemainingStars: TOTAL_INITIAL_STARS,
             drawnStarIds: [],
             lastDrawTimestamp: 0,
             todayHistory: [],
@@ -586,38 +632,21 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch approved wishes (checkbox = true) from Google Sheet if configured in code
+  // Tải số lượng sao dùng chung & lời chúc từ Google Sheet khi mở trang và định kỳ mỗi 30 giây
   useEffect(() => {
-    if (!GOOGLE_SHEET_SCRIPT_URL || !GOOGLE_SHEET_SCRIPT_URL.startsWith('http')) return;
-    fetch(GOOGLE_SHEET_SCRIPT_URL)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && Array.isArray(data.wishes)) {
-          const fetched = data.wishes.map((w, idx) => ({
-            id: 'GSHEET-' + idx,
-            timestamp: w.timestamp || '',
-            nickname: w.nickname || 'Người lạ',
-            mood: w.mood || 'all',
-            message: w.message || '',
-            approved: true
-          }));
-          updateState((prev) => ({
-            ...prev,
-            sheetWishes: fetched
-          }));
-        }
-      })
-      .catch(() => {});
+    syncFromGoogleSheet();
+    const syncTimer = setInterval(syncFromGoogleSheet, 30000);
+    return () => clearInterval(syncTimer);
   }, []);
 
   const remainingCooldownMs = appState.lastDrawTimestamp
     ? Math.max(0, COOLDOWN_MS - (nowMs - appState.lastDrawTimestamp))
     : 0;
 
-  const remainingStarsCount = Math.max(
-    0,
-    TOTAL_INITIAL_STARS - (appState.drawnStarIds ? appState.drawnStarIds.length : 0)
-  );
+  const remainingStarsCount =
+    typeof appState.sharedRemainingStars === 'number'
+      ? Math.max(0, appState.sharedRemainingStars)
+      : Math.max(0, TOTAL_INITIAL_STARS - (appState.drawnStarIds ? appState.drawnStarIds.length : 0));
 
   // Select mood handler
   const handleSelectMood = (moodKey) => {
@@ -700,6 +729,8 @@ export default function App() {
     const now = new Date();
     const timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
 
+    const currentSharedNumber = remainingStarsCount;
+
     const historyRecord = {
       id: chosenStar.id,
       mood: moodKey,
@@ -707,17 +738,40 @@ export default function App() {
       sender: chosenStar.sender || 'Bầu Trời Sao ✨',
       fromSheet: !!chosenStar.fromSheet,
       timeStr,
-      starNumber: TOTAL_INITIAL_STARS - (appState.drawnStarIds ? appState.drawnStarIds.length : 0)
+      starNumber: currentSharedNumber
     };
 
     updateState((prev) => ({
       ...prev,
+      sharedRemainingStars: Math.max(
+        0,
+        (typeof prev.sharedRemainingStars === 'number' ? prev.sharedRemainingStars : TOTAL_INITIAL_STARS) - 1
+      ),
       drawnStarIds: [...(prev.drawnStarIds || []), chosenStar.id],
       lastDrawTimestamp: Date.now(),
       todayHistory: [historyRecord, ...(prev.todayHistory || [])]
     }));
 
     setActiveLetter(historyRecord);
+
+    // Gửi yêu cầu trừ 1 ngôi sao vào ô dùng chung trên Sheet 'StarCounter'
+    if (GOOGLE_SHEET_SCRIPT_URL && GOOGLE_SHEET_SCRIPT_URL.startsWith('http')) {
+      fetch(GOOGLE_SHEET_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'draw_star' })
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && typeof data.remainingStars === 'number') {
+            updateState((prev) => ({
+              ...prev,
+              sharedRemainingStars: Math.max(0, data.remainingStars)
+            }));
+          }
+        })
+        .catch(() => {});
+    }
   };
 
   // Copy quote from Letter Modal
@@ -783,16 +837,14 @@ export default function App() {
     }));
 
     if (GOOGLE_SHEET_SCRIPT_URL && GOOGLE_SHEET_SCRIPT_URL.startsWith('http')) {
-      try {
-        fetch(GOOGLE_SHEET_SCRIPT_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newWishRow)
-        });
-      } catch (err) {
-        // Ignore network errors in offline/preview mode
-      }
+      fetch(GOOGLE_SHEET_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'submit_wish',
+          ...newWishRow
+        })
+      }).catch(() => {});
     }
 
     setNickname('');
