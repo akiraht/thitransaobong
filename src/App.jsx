@@ -1169,30 +1169,32 @@ export default function App() {
             ) : (
               /* Star Jar & Mood Dialogue shown after selecting a mood */
               <div className="flex flex-col items-center text-center">
-                <div className="w-full max-w-2xl bg-[#FFFDF7] border-[3px] border-[#593A47] rounded-3xl p-4 sm:p-5 shadow-[0_6px_0_#593A47] relative mb-7">
-                  <div className="flex items-start sm:items-center gap-3 text-left">
-                    <div
-                      style={{ backgroundColor: activeMoodCfg.badgeBg }}
-                      className="w-12 h-12 rounded-2xl border-[2.5px] border-[#593A47] flex items-center justify-center text-2xl shrink-0 shadow-[0_3px_0_#593A47]"
-                    >
-                      {activeMoodCfg.emoji}
-                    </div>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="font-extrabold text-sm sm:text-base text-[#D9386A]">
-                          Tâm trạng bạn chọn: {activeMoodCfg.label}
-                        </span>
-                        <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#FFE4EE] border border-[#593A47]">
-                          Thông điệp từ Bé Sao Bông
-                        </span>
+                {remainingCooldownMs <= 0 && (
+                  <div className="w-full max-w-2xl bg-[#FFFDF7] border-[3px] border-[#593A47] rounded-3xl p-4 sm:p-5 shadow-[0_6px_0_#593A47] relative mb-7">
+                    <div className="flex items-start sm:items-center gap-3 text-left">
+                      <div
+                        style={{ backgroundColor: activeMoodCfg.badgeBg }}
+                        className="w-12 h-12 rounded-2xl border-[2.5px] border-[#593A47] flex items-center justify-center text-2xl shrink-0 shadow-[0_3px_0_#593A47]"
+                      >
+                        {activeMoodCfg.emoji}
                       </div>
-                      <p className="text-sm sm:text-base font-bold text-[#593A47] leading-relaxed">
-                        {activeMoodCfg.dialogue}
-                      </p>
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className="font-extrabold text-sm sm:text-base text-[#D9386A]">
+                            Tâm trạng bạn chọn: {activeMoodCfg.label}
+                          </span>
+                          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#FFE4EE] border border-[#593A47]">
+                            Thông điệp từ Bé Sao Bông
+                          </span>
+                        </div>
+                        <p className="text-sm sm:text-base font-bold text-[#593A47] leading-relaxed">
+                          {activeMoodCfg.dialogue}
+                        </p>
+                      </div>
                     </div>
+                    <div className="w-5 h-5 bg-[#FFFDF7] border-r-[3px] border-b-[3px] border-[#593A47] rotate-45 absolute -bottom-3 left-1/2 -translate-x-1/2" />
                   </div>
-                  <div className="w-5 h-5 bg-[#FFFDF7] border-r-[3px] border-b-[3px] border-[#593A47] rotate-45 absolute -bottom-3 left-1/2 -translate-x-1/2" />
-                </div>
+                )}
 
                 {/* Remaining Star Counter */}
                 <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-4">
@@ -1336,7 +1338,7 @@ export default function App() {
                     onClick={handleDrawStar}
                     className="kawaii-btn mt-2 bg-gradient-to-r from-[#FF85A9] to-[#FFA6C1] hover:from-[#FF709A] hover:to-[#FF94B4] text-[#593A47] font-extrabold text-base sm:text-lg px-7 py-3.5 flex items-center gap-2.5"
                   >
-                    <span>✨</span>
+                    <span>🧘</span>
                     <span>
                       {remainingCooldownMs > 0
                         ? `Đang nghỉ 4h (${formatDurationHMS(remainingCooldownMs)})`
