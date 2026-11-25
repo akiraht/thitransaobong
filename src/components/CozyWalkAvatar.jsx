@@ -48,6 +48,7 @@ export default function CozyWalkAvatar({
   isMovementLocked = false,
   onSelectCharacter,
   onOpenUserHouse,
+  onOpenHistoryModal,
   onClickCentralStarFountain,
   isTownUnlocked = true,
   onPlayerMove,
@@ -147,54 +148,6 @@ export default function CozyWalkAvatar({
       }
     }
   }, [playerPos, onPlayerMove]);
-
-  // Lắng nghe Click trực tiếp trên toàn màn hình map để di chuyển
-  useEffect(() => {
-    const handleMapContainerClick = (e) => {
-      if (isMovementLocked) return;
-      if (
-        e.target.closest('button') ||
-        e.target.closest('.dialogue-box') ||
-        e.target.closest('.kawaii-card') ||
-        e.target.closest('a') ||
-        e.target.closest('input') ||
-        e.target.closest('textarea')
-      ) {
-        return;
-      }
-
-      const container =
-        document.getElementById('town-world-container') ||
-        document.getElementById('town-street-container');
-      if (!container) return;
-
-      const rect = container.getBoundingClientRect();
-      const clickX = ((e.clientX - rect.left) / rect.width) * 100;
-      const clickY = ((e.clientY - rect.top) / rect.height) * 100;
-
-      // Giới hạn trong vùng sườn đồi cỏ và đường đi
-      const skyLimit = calcHorizonY(customSkyHorizon, clickX);
-      const maxY = customBounds?.maxY || 93.5;
-      if (clickY < skyLimit - 1.5 || clickY > maxY + 1.0) return;
-
-      const clampedX = Math.max(3.0, Math.min(97.0, clickX));
-      const clampedY = Math.max(skyLimit, Math.min(93.0, clickY));
-
-      targetClickPosRef.current = { x: clampedX, y: clampedY };
-      stuckFrameCountRef.current = 0;
-      setIsWalking(true);
-      setClickRipple({ x: clampedX, y: clampedY, id: Date.now() });
-      setTimeout(() => setClickRipple(null), 650);
-    };
-
-    const container = document.getElementById('town-street-container');
-    if (container) {
-      container.addEventListener('click', handleMapContainerClick);
-    }
-    return () => {
-      if (container) container.removeEventListener('click', handleMapContainerClick);
-    };
-  }, [isMovementLocked, customSkyHorizon, customBounds]);
 
   // Ref lưu trạng thái game loop di chuyển liên tục
   const posRef = useRef(playerPos);
@@ -450,10 +403,11 @@ export default function CozyWalkAvatar({
       }
     } else if (activeNearLandmark.type === 'user') {
       if (typeof onOpenUserHouse === 'function') onOpenUserHouse();
-    } else if (activeNearLandmark.type === 'fountain') {
-      if (typeof onClickCentralStarFountain === 'function') onClickCentralStarFountain();
+    } else if (activeNearLandmark.type === 'fountain' || activeNearLandmark.id === 'wishing_star_jar') {
+      if (typeof onOpenHistoryModal === 'function') onOpenHistoryModal();
+      else if (typeof onClickCentralStarFountain === 'function') onClickCentralStarFountain();
     }
-  }, [activeNearLandmark, onSelectCharacter, onOpenUserHouse, onClickCentralStarFountain]);
+  }, [activeNearLandmark, onSelectCharacter, onOpenUserHouse, onOpenHistoryModal, onClickCentralStarFountain]);
 
   // Báo dữ liệu hội thoại lên cha
   useEffect(() => {
@@ -500,6 +454,9 @@ export default function CozyWalkAvatar({
   }, [isMovementLocked, activeNearLandmark, handleTriggerLandmark]);
 
   const residentDisplayName = resident?.nickname ? resident.nickname : 'Bạn Nhỏ Đáng Yêu';
+  const isTouchDevice =
+    typeof window !== 'undefined' &&
+    (window.matchMedia?.('(pointer: coarse)')?.matches || navigator.maxTouchPoints > 0);
 
   return (
     <>
@@ -652,34 +609,57 @@ export default function CozyWalkAvatar({
               Chào bạn nhỏ! Dưới đây là cách khám phá thế giới 2.5D:
             </p>
 
-            {/* Các mẹo điều khiển */}
+            {/* Các mẹo điều khiển (Phân tách riêng cho Điện thoại cảm ứng & PC) */}
             <div className="w-full flex flex-col gap-2.5 text-left mb-5">
               <div className="p-3 rounded-2xl bg-[#FFF9E6] border-2 border-[#593A47]/30 flex items-start gap-3">
-                <span className="text-xl">🖱️</span>
+                <span className="text-xl">{isTouchDevice ? '👆' : '🖱️'}</span>
                 <div>
-                  <h4 className="text-xs font-black text-[#593A47]">Click Chuột Trái / Chạm Màn Hình</h4>
+                  <h4 className="text-xs font-black text-[#593A47]">
+                    {isTouchDevice ? 'Chạm Lên Bãi Cỏ Để Bước Tới' : 'Click Chuột Trái / Chạm Màn Hình'}
+                  </h4>
                   <p className="text-[11px] font-semibold text-[#8C6575]">
-                    Click vào bất kỳ điểm nào trên bãi cỏ hoặc con đường để bé tự bước tới đó.
+                    {isTouchDevice
+                      ? 'Chạm vào bất kỳ điểm nào trên bãi cỏ hoặc con đường để bé tự bước tới đó.'
+                      : 'Click vào bất kỳ điểm nào trên bãi cỏ hoặc con đường để bé tự bước tới đó.'}
                   </p>
                 </div>
               </div>
 
-              <div className="p-3 rounded-2xl bg-[#FFF0F5] border-2 border-[#593A47]/30 flex items-start gap-3">
-                <span className="text-xl">⌨️</span>
-                <div>
-                  <h4 className="text-xs font-black text-[#593A47]">Phím W - A - S - D hoặc Mũi Tên</h4>
-                  <p className="text-[11px] font-semibold text-[#8C6575]">
-                    Dùng bàn phím để di chuyển tự do khắp sườn đồi, leo dốc và ngắm cảnh.
-                  </p>
+              {isTouchDevice ? (
+                <div className="p-3 rounded-2xl bg-[#FFF0F5] border-2 border-[#593A47]/30 flex items-start gap-3">
+                  <span className="text-xl">👈</span>
+                  <div>
+                    <h4 className="text-xs font-black text-[#593A47]">Vuốt Ngang 1 Ngón Để Ngắm Phố</h4>
+                    <p className="text-[11px] font-semibold text-[#8C6575]">
+                      Vuốt nhẹ sang trái hoặc phải để ngắm toàn bộ các ngôi nhà trên bản đồ.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-3 rounded-2xl bg-[#FFF0F5] border-2 border-[#593A47]/30 flex items-start gap-3">
+                  <span className="text-xl">⌨️</span>
+                  <div>
+                    <h4 className="text-xs font-black text-[#593A47]">Phím W - A - S - D hoặc Mũi Tên</h4>
+                    <p className="text-[11px] font-semibold text-[#8C6575]">
+                      Dùng bàn phím để di chuyển tự do khắp sườn đồi, leo dốc và ngắm cảnh.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="p-3 rounded-2xl bg-[#EDF7ED] border-2 border-[#593A47]/30 flex items-start gap-3">
                 <span className="text-xl">💬</span>
                 <div>
                   <h4 className="text-xs font-black text-[#593A47]">Trò Chuyện Cùng Cư Dân</h4>
                   <p className="text-[11px] font-semibold text-[#8C6575]">
-                    Bước lại gần các ngôi nhà và nhấn phím <kbd className="px-1 py-0.5 rounded bg-white border border-[#593A47] text-[10px]">Space</kbd> hoặc nút trò chuyện.
+                    {isTouchDevice ? (
+                      'Chạm trực tiếp vào ngôi nhà hoặc bước lại gần rồi bấm nút trò chuyện.'
+                    ) : (
+                      <>
+                        Bước lại gần các ngôi nhà và nhấn phím{' '}
+                        <kbd className="px-1 py-0.5 rounded bg-white border border-[#593A47] text-[10px]">Space</kbd> hoặc nút trò chuyện.
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
@@ -687,9 +667,9 @@ export default function CozyWalkAvatar({
               <div className="p-3 rounded-2xl bg-[#F0F4FF] border-2 border-[#593A47]/30 flex items-start gap-3">
                 <span className="text-xl">🌀</span>
                 <div>
-                  <h4 className="text-xs font-black text-[#593A47]">Cổng Dịch Chuyển & Đổi Bản Đồ</h4>
+                  <h4 className="text-xs font-black text-[#593A47]">Cổng Dịch Chuyển &amp; Đổi Bản Đồ</h4>
                   <p className="text-[11px] font-semibold text-[#8C6575]">
-                    Bước vào vòng tròn lấp lánh hoặc chạm thanh chọn bản đồ ở góc dưới bên phải.
+                    Bước vào vòng tròn lấp lánh hoặc chọn nhanh 4 khu phố ở thanh điều hướng phía dưới.
                   </p>
                 </div>
               </div>

@@ -27,7 +27,7 @@ export default function HistorySidebar({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-[#593A47]/55 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+      className="fixed inset-0 z-[975] bg-[#593A47]/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
     >
       <div
         onClick={(e) => e.stopPropagation()}

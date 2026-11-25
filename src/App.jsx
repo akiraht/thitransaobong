@@ -6,8 +6,6 @@ import {
   STORAGE_KEY,
   RESIDENT_STORAGE_KEY,
   MOOD_CONFIG,
-  BADGE_DEFINITIONS,
-  CHARACTER_STAMPS,
   DAILY_SUNNY_QUESTS
 } from './config/constants';
 import {
@@ -24,7 +22,36 @@ import ComicSpeechModal from './components/ComicSpeechModal';
 import OnboardingModals from './components/OnboardingModals';
 import UserHouseModal from './components/UserHouseModal';
 import SkillModals from './components/SkillModals';
+import ExtendedSkillModals from './components/ExtendedSkillModals';
+import DailyComicModal from './components/DailyComicModal';
+import CelebrationShareModal from './components/CelebrationShareModal';
 import HistorySidebar from './components/HistorySidebar';
+import PwaInstallPrompt from './components/PwaInstallPrompt';
+import { townAudio } from './utils/audioEngine';
+import {
+  ALL_BADGES,
+  getLevelInfoFromBadgeCount,
+  getResidentUnlockLevel,
+} from './config/progressionConfig';
+import { TOWN_CHARACTERS } from './data/characterSprites';
+import {
+  INWORLD_QUEST_IDS,
+  loadDailyInWorldQuests,
+  saveDailyInWorldQuests,
+  buildDailyInWorldQuests,
+} from './utils/inWorldQuests';
+import {
+  loadDailyQuestsState,
+  applyQuestAction,
+  applyQuestById,
+  applyDailyQuestItemCollect,
+  claimDailyCompletionBox,
+} from './utils/dailyQuestService';
+import {
+  loadCollectedComics,
+  saveCollectedComics,
+} from './data/dailyComicsData';
+import { getAllAdminComics } from './utils/adminDataStore';
 
 export default function App() {
   const quotesByMood = useMemo(() => buildQuotesDatabase(), []);
@@ -69,7 +96,35 @@ export default function App() {
     return 'night';
   }, [nowMs, timeMode, isNightMode]);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
-  const [activeSkillPanel, setActiveSkillPanel] = useState(null); // null | 'weather' | 'breathe' | 'quest'
+  const [activeAmbientSound, setActiveAmbientSound] = useState(null);
+  const [sleepTimerMinutes, setSleepTimerMinutes] = useState(15);
+  const [activeSkillPanel, setActiveSkillPanel] = useState(null); // null | 'weather' | 'breathe' | 'quest' | 'wish'
+  const [activeExtendedSkill, setActiveExtendedSkill] = useState(null); // cư dân 09-16
+  const [isComicModalOpen, setIsComicModalOpen] = useState(false);
+  const [adminComics, setAdminComics] = useState([]);
+
+  useEffect(() => {
+    getAllAdminComics().then((list) => setAdminComics(list));
+  }, []);
+  const [hasReadTodayComic, setHasReadTodayComic] = useState(() => {
+    try {
+      return SafeStorage.getItem('TTSB_READ_COMIC_DATE_V1') === getTodayDateString();
+    } catch {
+      return false;
+    }
+  });
+  const [collectedComics, setCollectedComics] = useState(() => loadCollectedComics());
+  const [dailyQuestsState, setDailyQuestsState] = useState(() =>
+    loadDailyQuestsState(getLevelInfoFromBadgeCount(0).unlockedResidentIds)
+  );
+  const [inWorldQuests, setInWorldQuests] = useState(() => loadDailyInWorldQuests());
+  const [isQuestHudOpen, setIsQuestHudOpen] = useState(false);
+  const [celebrationQueue, setCelebrationQueue] = useState([]);
+
+  const enqueueCelebration = (evt) => {
+    if (!evt) return;
+    setCelebrationQueue((prev) => [...prev, evt]);
+  };
   const [dailyQuestText, setDailyQuestText] = useState(DAILY_SUNNY_QUESTS[0]);
   const [breathePhase, setBreathePhase] = useState('🌬️ Hít vào nhẹ nhàng... (4 giây)');
   const [toastMsg, setToastMsg] = useState('');
@@ -81,10 +136,8 @@ export default function App() {
   const [wishMessage, setWishMessage] = useState('');
   const [wishError, setWishError] = useState(false);
 
-  const footerFormRef = useRef(null);
   const toastTimeoutRef = useRef(null);
-  const musicIntervalRef = useRef(null);
-  const audioCtxRef = useRef(null);
+  const sleepTimeoutRef = useRef(null);
 
   const showToast = (msg) => {
     setToastMsg(msg);
@@ -124,19 +177,120 @@ export default function App() {
     const totalLikesReceived = myWishesList.reduce((sum, w) => sum + (Number(w.likes) || 0), 0);
     const stats = {
       wishesSent: myWishesList.length,
-      likesReceived: totalLikesReceived,
+      likesReceived: totalLikesReceived + (Number(resident.townHearts) || 0),
       savedCount: (resident.savedStars || []).length,
+      wishesAndMemories: myWishesList.length + (resident.savedStars || []).length,
+      dailyStreak: dailyQuestsState?.dailyStreak || 0,
+      totalQuestsCompleted: dailyQuestsState?.totalQuestsCompleted || 0,
+      collectedComicsCount: collectedComics.length,
+      exploredActionsCount: Number(resident.exploredActionsCount) || 0,
       myWishesList
     };
-    const unlockedBadges = BADGE_DEFINITIONS.filter((b) => b.check(stats));
-    const currentBadge = unlockedBadges[unlockedBadges.length - 1] || BADGE_DEFINITIONS[0];
+    const unlockedBadges = ALL_BADGES.filter((b) => b.check(stats));
+    const levelInfo = getLevelInfoFromBadgeCount(unlockedBadges.length);
+    const currentBadge = unlockedBadges[unlockedBadges.length - 1] || {
+      icon: '🌱',
+      title: levelInfo.title,
+    };
     return {
       ...stats,
       unlockedBadges,
+      levelInfo,
       currentBadge,
-      currentTitle: `${currentBadge.icon} ${currentBadge.title}`
+      currentTitle: levelInfo.title
     };
-  }, [resident, appState.sheetWishes]);
+  }, [resident, appState.sheetWishes, dailyQuestsState, collectedComics]);
+
+  // Theo dõi mở khóa Huy hiệu mới & Lên Cấp (Level Up) -> Bật Modal Chúc Mừng + Nút Share MXH
+  const progressionInitRef = useRef(false);
+  const prevUnlockedIdsRef = useRef(new Set());
+  const prevLevelRef = useRef(0);
+
+  useEffect(() => {
+    const unlockedIds = residentStats.unlockedBadges.map((b) => b.id);
+    const currentLv = residentStats.levelInfo.level;
+
+    if (!progressionInitRef.current) {
+      // Khởi tạo từ SafeStorage để không bắn lại modal cũ khi reload trang
+      try {
+        const storedSeen = JSON.parse(SafeStorage.getItem('TTSB_SEEN_BADGES_V1') || 'null');
+        const storedLv = SafeStorage.getItem('TTSB_SEEN_LEVEL_V1');
+        if (Array.isArray(storedSeen)) {
+          prevUnlockedIdsRef.current = new Set(storedSeen);
+        } else {
+          prevUnlockedIdsRef.current = new Set(unlockedIds);
+          SafeStorage.setItem('TTSB_SEEN_BADGES_V1', JSON.stringify(unlockedIds));
+        }
+        if (storedLv !== null) {
+          prevLevelRef.current = Number(storedLv) || 0;
+        } else {
+          prevLevelRef.current = currentLv;
+          SafeStorage.setItem('TTSB_SEEN_LEVEL_V1', String(currentLv));
+        }
+      } catch {
+        prevUnlockedIdsRef.current = new Set(unlockedIds);
+        prevLevelRef.current = currentLv;
+      }
+      progressionInitRef.current = true;
+      return;
+    }
+
+    // 1. Kiểm tra huy hiệu mới đạt được
+    const newlyUnlocked = residentStats.unlockedBadges.filter(
+      (b) => !prevUnlockedIdsRef.current.has(b.id)
+    );
+    if (newlyUnlocked.length > 0) {
+      newlyUnlocked.forEach((b) => {
+        prevUnlockedIdsRef.current.add(b.id);
+        enqueueCelebration({
+          type: 'badge',
+          icon: b.tierEmoji,
+          badgeBg: b.tierBg,
+          badgeBorder: b.tierBorder,
+          subtitle: `🏅 Huy Hiệu Bậc ${b.tierName} Mới!`,
+          title: b.name,
+          description: `${b.desc} — Đã đạt ${residentStats.unlockedBadges.length}/${ALL_BADGES.length} huy hiệu!`,
+          shareText: `🏅 Mình vừa mở khóa huy hiệu "${b.name}" (${b.tierEmoji} bậc ${b.tierName}) tại Thị Trấn Sao Bông!`,
+        });
+      });
+      SafeStorage.setItem(
+        'TTSB_SEEN_BADGES_V1',
+        JSON.stringify(Array.from(prevUnlockedIdsRef.current))
+      );
+    }
+
+    // 2. Kiểm tra lên Level mới
+    if (currentLv > prevLevelRef.current) {
+      const lvDef = residentStats.levelInfo.currentDef;
+      const unlockedNames = (lvDef.unlockResidents || []).map((cid) => {
+        const found = TOWN_CHARACTERS.find((c) => c.id === cid);
+        return found ? found.name : cid;
+      });
+      prevLevelRef.current = currentLv;
+      SafeStorage.setItem('TTSB_SEEN_LEVEL_V1', String(currentLv));
+      enqueueCelebration({
+        type: 'level_up',
+        icon: '⬆️',
+        badgeBg: '#FFF4BD',
+        badgeBorder: '#CA8A04',
+        subtitle: `🎉 Chúc Mừng Lên Cấp LV.${currentLv}!`,
+        title: lvDef.title,
+        description: lvDef.unlockNote,
+        unlockedNames,
+        shareText: `🎉 Mình vừa lên LV.${currentLv} (${lvDef.title}) và mở khóa thêm cư dân mới tại Thị Trấn Sao Bông!`,
+      });
+    }
+  }, [residentStats.unlockedBadges, residentStats.levelInfo]);
+
+  // Đồng bộ danh sách nhiệm vụ ngày với cư dân đã mở khóa
+  useEffect(() => {
+    setDailyQuestsState((prev) => {
+      const allowed = residentStats.levelInfo.unlockedResidentIds;
+      const hasLocked = (prev?.quests || []).some((q) => !q.done && !allowed.has(q.npcId));
+      if (!hasLocked) return prev;
+      return loadDailyQuestsState(allowed);
+    });
+  }, [residentStats.levelInfo.level]);
 
   useEffect(() => {
     if (activeSkillPanel !== 'breathe') return;
@@ -156,45 +310,223 @@ export default function App() {
 
   const toggleMusicBox = () => {
     if (isMusicPlaying) {
-      if (musicIntervalRef.current) clearInterval(musicIntervalRef.current);
-      musicIntervalRef.current = null;
+      townAudio.stopLofi();
       setIsMusicPlaying(false);
-      showToast('🔇 Đã tắt đài nhạc của Anh Tia Chớp.');
+      showToast('🔇 Đã tắt đài nhạc Lofi của Anh Tia Chớp.');
       return;
     }
-    try {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new AudioContextClass();
-      }
-      const ctx = audioCtxRef.current;
-      if (ctx.state === 'suspended') ctx.resume();
-
-      const notes = [523.25, 659.25, 783.99, 1046.5, 783.99, 659.25, 587.33, 698.46, 880.0, 698.46];
-      let step = 0;
-      const playNote = () => {
-        if (!audioCtxRef.current) return;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(notes[step % notes.length], ctx.currentTime);
-        gain.gain.setValueAtTime(0.001, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.06, ctx.currentTime + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.1);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 1.15);
-        step++;
-      };
-      playNote();
-      musicIntervalRef.current = setInterval(playNote, 650);
+    const started = townAudio.startLofi();
+    if (started) {
       setIsMusicPlaying(true);
-      showToast('🎧 Đang phát giai điệu Hộp Nhạc Sao Bông chữa lành!');
-    } catch (e) {
+      showToast('🎧 Đang phát giai điệu Lofi Sao Bông êm dịu!');
+    } else {
       showToast('⚠️ Trình duyệt của bạn đang chặn phát âm thanh.');
     }
   };
+
+  const handleStopAmbient = () => {
+    townAudio.stopAmbient();
+    if (sleepTimeoutRef.current) {
+      clearTimeout(sleepTimeoutRef.current);
+      sleepTimeoutRef.current = null;
+    }
+    setActiveAmbientSound(null);
+    showToast('🔇 Đã tắt âm thanh ru ngủ của Bé Đom Đóm.');
+  };
+
+  const handleStartAmbient = (type, minutes = 15) => {
+    const started = townAudio.startAmbient(type);
+    if (!started) {
+      showToast('⚠️ Trình duyệt đang chặn phát âm thanh.');
+      return;
+    }
+    setActiveAmbientSound(type);
+    setSleepTimerMinutes(minutes);
+    if (sleepTimeoutRef.current) clearTimeout(sleepTimeoutRef.current);
+    sleepTimeoutRef.current = setTimeout(() => {
+      townAudio.stopAmbient();
+      setActiveAmbientSound(null);
+    }, minutes * 60 * 1000);
+
+    const labels = {
+      rain: '🌧️ Đang phát tiếng Mưa Rơi êm dịu',
+      night_breeze: '🌙 Đang phát tiếng Gió Đêm Hè',
+      fireplace: '🔥 Đang phát tiếng Lửa Trại tí tách',
+    };
+    showToast(`${labels[type] || '🎵 Đang phát âm thanh'} (tự tắt sau ${minutes}p)`);
+  };
+
+  const handleRewardHearts = (sourceId, amount, message) => {
+    const todayKey = getTodayDateString();
+    const claimKey = `${todayKey}:${sourceId}`;
+    const alreadyClaimed = (resident.claimedDailyRewards || []).includes(claimKey);
+    if (!alreadyClaimed) {
+      updateResident((prev) => ({
+        ...prev,
+        townHearts: (Number(prev.townHearts) || 0) + amount,
+        claimedDailyRewards: [...(prev.claimedDailyRewards || []).slice(-30), claimKey],
+      }));
+    }
+    showToast(alreadyClaimed ? `${message.replace(/\(\+\d+ Tim\)/, '').trim()} (Đã nhận tim hôm nay rồi 💖)` : message);
+  };
+
+  const updateInWorldQuests = (updater) => {
+    setInWorldQuests((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      saveDailyInWorldQuests(next);
+      return next;
+    });
+  };
+
+  const triggerDailyQuestProgress = (actionType) => {
+    setDailyQuestsState((prev) => {
+      const { next, completedNow } = applyQuestAction(prev, actionType);
+      if (completedNow) {
+        setTimeout(() => {
+          showToast(`🎯 Xong nhiệm vụ ngày: "${completedNow.title}" (+${completedNow.rewardStars} ⭐)`);
+        }, 120);
+      }
+      return next;
+    });
+  };
+
+  const handleClaimDailyBox = () => {
+    setDailyQuestsState((prev) => {
+      const next = claimDailyCompletionBox(prev);
+      if (next !== prev) {
+        showToast(`🎁 Nhận +50 Sao Bông! Chuỗi chuyên cần: 🔥 ${next.dailyStreak} ngày!`);
+      }
+      return next;
+    });
+  };
+
+  const handleCompleteDailyQuiz = (questId, explanation) => {
+    setDailyQuestsState((prev) => {
+      const { next, completedNow } = applyQuestById(prev, questId);
+      if (completedNow) {
+        setTimeout(() => {
+          showToast(
+            explanation
+              ? `🎉 ${explanation} (+${completedNow.rewardStars} ⭐)`
+              : `🎉 Trả lời chính xác! Xong "${completedNow.title}" (+${completedNow.rewardStars} ⭐)`
+          );
+        }, 80);
+      }
+      return next;
+    });
+  };
+
+  const handleCollectDailyQuestItem = (questId, targetId) => {
+    setDailyQuestsState((prev) => {
+      const { next, collectedTarget, completedNow } = applyDailyQuestItemCollect(prev, questId, targetId);
+      if (completedNow) {
+        setTimeout(() => {
+          showToast(`🎉 Đã tìm đủ vật phẩm cho "${completedNow.title}" (+${completedNow.rewardStars} ⭐)`);
+        }, 80);
+      } else if (collectedTarget) {
+        setTimeout(() => {
+          showToast(`${collectedTarget.icon || '✨'} Đã nhặt ${collectedTarget.label}!`);
+        }, 80);
+      }
+      return next;
+    });
+  };
+
+  const handleCollectComic = (comic) => {
+    if (!comic || !comic.id) return;
+    if (collectedComics.some((c) => c.id === comic.id)) {
+      showToast('📚 Tập truyện này đã có trong Tủ Sách Kỷ Niệm rồi!');
+      return;
+    }
+    const next = [comic, ...collectedComics];
+    setCollectedComics(next);
+    saveCollectedComics(next);
+    showToast(`📚 Đã sưu tầm "${comic.title}" vào Tủ Sách của Bác Sao Thổ! (${next.length}/7)`);
+  };
+
+  const handleAcceptInWorldQuest = (questId) => {
+    const q = inWorldQuests?.quests?.[questId];
+    if (!q || q.status !== 'idle') return;
+    updateInWorldQuests((prev) => ({
+      ...prev,
+      quests: {
+        ...prev.quests,
+        [questId]: { ...prev.quests[questId], status: 'active' },
+      },
+    }));
+    showToast(`📜 Đã nhận "${q.title}"! Chạm icon 📜 góc trên trái để xem gợi ý vị trí trên các map.`);
+  };
+
+  const handleCollectQuestTarget = (questId, targetId) => {
+    const q = inWorldQuests?.quests?.[questId];
+    if (!q || q.status !== 'active') return;
+    const target = q.targets.find((t) => t.id === targetId);
+    if (!target || target.collected) return;
+
+    const nextTargets = q.targets.map((t) => (t.id === targetId ? { ...t, collected: true } : t));
+    const collectedCount = nextTargets.filter((t) => t.collected).length;
+    const allDone = collectedCount >= nextTargets.length;
+
+    let nextStatus = 'active';
+    if (allDone) {
+      nextStatus = q.requiresReturn ? 'ready_to_claim' : 'completed';
+    }
+
+    updateInWorldQuests((prev) => ({
+      ...prev,
+      quests: {
+        ...prev.quests,
+        [questId]: {
+          ...prev.quests[questId],
+          status: nextStatus,
+          targets: nextTargets,
+        },
+      },
+    }));
+
+    if (allDone) {
+      if (q.requiresReturn) {
+        showToast(`${target.icon} Đã nhặt ${target.label}! ${q.returnHint}`);
+      } else {
+        handleRewardHearts(
+          questId,
+          q.rewardHearts,
+          `🎉 Hoàn thành "${q.title}"! (+${q.rewardHearts} Tim)`
+        );
+        triggerDailyQuestProgress('inworld_quest_complete');
+      }
+    } else if (target.truth) {
+      showToast(`${target.truth} (${collectedCount}/${nextTargets.length})`);
+    } else {
+      showToast(`${target.icon} Đã thu thập ${target.label}! (${collectedCount}/${nextTargets.length})`);
+    }
+  };
+
+  const handleClaimInWorldQuest = (questId) => {
+    const q = inWorldQuests?.quests?.[questId];
+    if (!q || q.status !== 'ready_to_claim') return;
+    updateInWorldQuests((prev) => ({
+      ...prev,
+      quests: {
+        ...prev.quests,
+        [questId]: { ...prev.quests[questId], status: 'completed' },
+      },
+    }));
+    handleRewardHearts(
+      questId,
+      q.rewardHearts,
+      `🌈 ${q.npcName} vui lắm! Hoàn thành "${q.title}" (+${q.rewardHearts} Tim)`
+    );
+    triggerDailyQuestProgress('inworld_quest_complete');
+  };
+
+  useEffect(() => {
+    return () => {
+      townAudio.stopLofi();
+      townAudio.stopAmbient();
+      if (sleepTimeoutRef.current) clearTimeout(sleepTimeoutRef.current);
+    };
+  }, []);
 
   const syncFromGoogleSheet = () => {
     if (!GOOGLE_SHEET_SCRIPT_URL || !GOOGLE_SHEET_SCRIPT_URL.startsWith('http')) return;
@@ -246,6 +578,11 @@ export default function App() {
             wishSubmittedToday: false
           };
           SafeStorage.setItem(STORAGE_KEY, JSON.stringify(resetState));
+          const freshQuests = buildDailyInWorldQuests(todayStr);
+          saveDailyInWorldQuests(freshQuests);
+          setInWorldQuests(freshQuests);
+          setDailyQuestsState(loadDailyQuestsState());
+          setHasReadTodayComic(false);
           setModalStep('mood');
           return resetState;
         }
@@ -428,9 +765,12 @@ export default function App() {
   };
 
   // Kích hoạt Kỹ Năng từ Hộp Thoại Truyện Tranh của từng nhân vật
-  // (Đã đổi: Bác Mây Xốp -> Thẻ Cư Dân; Chị Cầu Vồng -> Dự Báo Thời Tiết)
   const handleTriggerCharacterSkill = (charId) => {
     setSelectedStreetChar(null);
+    updateResident((prev) => ({
+      ...prev,
+      exploredActionsCount: (Number(prev.exploredActionsCount) || 0) + 1,
+    }));
 
     if (charId === 'star') {
       handleClickCentralFountain();
@@ -445,6 +785,7 @@ export default function App() {
     if (charId === 'rainbow') {
       // Chị Cầu Vồng: Dự báo Thời tiết Thị trấn
       setActiveSkillPanel('weather');
+      triggerDailyQuestProgress('rainbow');
       return;
     }
     if (charId === 'moon') {
@@ -453,6 +794,7 @@ export default function App() {
         if (next) {
           setTimeMode('night');
           showToast('🌌 Chú Trăng Khuyết đã thắp sáng Bầu Trời Khuya Thị Trấn!');
+          triggerDailyQuestProgress('moon');
         } else {
           setTimeMode('auto');
           showToast('🕒 Đã chuyển bầu trời về chế độ Thời Gian Thực Tự Động!');
@@ -465,18 +807,43 @@ export default function App() {
       const randomQuest = DAILY_SUNNY_QUESTS[Math.floor(Math.random() * DAILY_SUNNY_QUESTS.length)];
       setDailyQuestText(randomQuest);
       setActiveSkillPanel('quest');
+      triggerDailyQuestProgress('sun');
       return;
     }
     if (charId === 'shooting_star') {
       setActiveSkillPanel('wish');
+      triggerDailyQuestProgress('shooting_star');
       return;
     }
     if (charId === 'nebula') {
       setActiveSkillPanel('breathe');
+      triggerDailyQuestProgress('nebula');
       return;
     }
     if (charId === 'spark') {
       toggleMusicBox();
+      triggerDailyQuestProgress('spark');
+      return;
+    }
+    // 4 Mini-game Ngõ Gió Xoáy (17-20) chạy trực tiếp như Nhiệm vụ trên 4 bản đồ
+    if (INWORLD_QUEST_IDS.includes(charId)) {
+      const q = inWorldQuests?.quests?.[charId];
+      if (!q || q.status === 'idle') {
+        handleAcceptInWorldQuest(charId);
+      } else if (q.status === 'active') {
+        setIsQuestHudOpen(true);
+      } else if (q.status === 'ready_to_claim') {
+        handleClaimInWorldQuest(charId);
+      } else {
+        showToast(`✅ Bạn đã hoàn thành "${q.title}" hôm nay rồi! Hẹn ngày mai nhé 💖`);
+      }
+      return;
+    }
+    // 8 cư dân mở rộng (09 – 16: bao gồm Bà Cực Quang & Bác Sao Thổ)
+    const extendedIds = ['dewdrop', 'breeze', 'snowflake', 'aurora', 'saturn', 'firefly', 'sunset', 'north_star'];
+    if (extendedIds.includes(charId)) {
+      setActiveExtendedSkill(charId);
+      triggerDailyQuestProgress(charId);
     }
   };
 
@@ -935,6 +1302,28 @@ export default function App() {
               setTimeMode(mode);
             }}
             isNightMode={isNightMode}
+            isMusicPlaying={isMusicPlaying}
+            activeAmbientSound={activeAmbientSound}
+            onToggleMusic={toggleMusicBox}
+            onStopAmbient={handleStopAmbient}
+            hasUnreadDailyComic={!hasReadTodayComic}
+            onOpenComicModal={() => setIsComicModalOpen(true)}
+            levelInfo={residentStats.levelInfo}
+            unlockedBadgeCount={residentStats.unlockedBadges.length}
+            totalBadgeCount={ALL_BADGES.length}
+            onLockedResidentClick={(char, unlockLv) => {
+              showToast(
+                `🔒 ${char.name} mở khóa ở LV.${unlockLv}! Thu thập thêm huy hiệu để lên cấp nhé.`
+              );
+            }}
+            dailyQuestsState={dailyQuestsState}
+            onClaimDailyBox={handleClaimDailyBox}
+            onCompleteDailyQuiz={handleCompleteDailyQuiz}
+            onCollectDailyQuestItem={handleCollectDailyQuestItem}
+            inWorldQuests={inWorldQuests}
+            isQuestHudOpen={isQuestHudOpen}
+            onToggleQuestHud={() => setIsQuestHudOpen((prev) => !prev)}
+            onCollectQuestTarget={handleCollectQuestTarget}
             isTownUnlocked={appState.townUnlockedToday}
             welcomeBannerVisible={welcomeBannerVisible}
             remainingStarsCount={remainingStarsCount}
@@ -943,15 +1332,26 @@ export default function App() {
             resident={resident}
             residentStats={residentStats}
             historyCount={historyList.length}
+            onOpenHistoryModal={() => setIsSidebarOpen(true)}
             isMovementLocked={Boolean(
               selectedStreetChar ||
               activeSkillPanel ||
+              activeExtendedSkill ||
+              isComicModalOpen ||
+              isQuestHudOpen ||
+              celebrationQueue.length > 0 ||
               isResidentModalOpen ||
               isSidebarOpen ||
               modalStep
             )}
-            onOpenHistoryModal={() => setIsSidebarOpen(true)}
-            onSelectCharacter={(char) => setSelectedStreetChar(char)}
+            onSelectCharacter={(char) => {
+              if (!residentStats.levelInfo.unlockedResidentIds.has(char.id)) {
+                const lv = getResidentUnlockLevel(char.id);
+                showToast(`🔒 ${char.name} mở khóa ở LV.${lv}! Thu thập thêm huy hiệu để gặp gỡ nhé.`);
+                return;
+              }
+              setSelectedStreetChar(char);
+            }}
             onOpenUserHouse={() => setIsResidentModalOpen(true)}
             onClickCentralStarFountain={handleClickCentralFountain}
           />
@@ -991,6 +1391,7 @@ export default function App() {
           character={selectedStreetChar}
           isNightMode={isNightMode}
           isMusicPlaying={isMusicPlaying}
+          questInfo={selectedStreetChar ? inWorldQuests?.quests?.[selectedStreetChar.id] || null : null}
           onClose={() => setSelectedStreetChar(null)}
           onTriggerSkill={handleTriggerCharacterSkill}
         />
@@ -1049,9 +1450,72 @@ export default function App() {
           onClose={() => setActiveSkillPanel(null)}
         />
 
-        {/* TOAST BANNER */}
+        {/* MODAL KỸ NĂNG MỞ RỘNG CHO 12 CƯ DÂN (SỐ 09 – SỐ 20) */}
+        <ExtendedSkillModals
+          activePanel={activeExtendedSkill}
+          activeAmbientSound={activeAmbientSound}
+          sleepTimerMinutes={sleepTimerMinutes}
+          onStartAmbient={handleStartAmbient}
+          onStopAmbient={handleStopAmbient}
+          onRewardHearts={handleRewardHearts}
+          onShowToast={showToast}
+          onClose={() => setActiveExtendedSkill(null)}
+        />
+
+        {/* MODAL TỦ TRUYỆN & TRUYỆN TRANH MỖI NGÀY (MỞ TỪ ICON SÁCH TRÊN TOP MENU) */}
+        <DailyComicModal
+          isOpen={isComicModalOpen}
+          playerLevel={residentStats.levelInfo.level}
+          residentName={resident.nickname || 'Cư dân Sao Bông'}
+          collectedComics={collectedComics}
+          customComics={adminComics}
+          hasReadTodayComic={hasReadTodayComic}
+          onCollectComic={handleCollectComic}
+          onFinishedReadingComic={(comic) => {
+            SafeStorage.setItem('TTSB_READ_COMIC_DATE_V1', getTodayDateString());
+            setHasReadTodayComic(true);
+            triggerDailyQuestProgress('read_daily_comic');
+            setIsComicModalOpen(false);
+            enqueueCelebration({
+              type: 'comic_done',
+              icon: '📖',
+              badgeBg: '#F3E8FF',
+              badgeBorder: '#9333EA',
+              subtitle: '📖 Đã Đọc Xong Truyện Tranh Hôm Nay!',
+              title: comic?.title || 'Truyện Tranh Thị Trấn Sao Bông',
+              description: comic?.moral || 'Cảm ơn bạn đã dành chút thời gian thư giãn cùng cư dân thị trấn!',
+              shareText: `📖 Mình vừa đọc xong tập "${comic?.title}" tại Thị Trấn Sao Bông — "${comic?.moral}" ✨`,
+            });
+          }}
+          onShowToast={showToast}
+          onClose={() => setIsComicModalOpen(false)}
+        />
+
+        {/* MODAL CHÚC MỪNG & CHIA SẺ MẠNG XÃ HỘI (HUY HIỆU / LEVEL UP / ĐỌC XONG TRUYỆN) */}
+        <CelebrationShareModal
+          event={celebrationQueue[0] || null}
+          onShowToast={showToast}
+          onClose={() => setCelebrationQueue((prev) => prev.slice(1))}
+        />
+
+        {/* BANNER GỢI Ý CÀI ĐẶT PWA LÊN MÀN HÌNH CHÍNH */}
+        <PwaInstallPrompt
+          isVisible={Boolean(
+            appState.townUnlockedToday &&
+            !selectedStreetChar &&
+            !activeSkillPanel &&
+            !activeExtendedSkill &&
+            !isComicModalOpen &&
+            !isQuestHudOpen &&
+            !isResidentModalOpen &&
+            !isSidebarOpen &&
+            !modalStep
+          )}
+        />
+
+        {/* TOAST BANNER (Trên mobile hiện phía trên để không đè dock & hộp thoại ở đáy) */}
         {toastMsg && (
-          <div className="fixed bottom-5 right-5 z-50 bg-[#FFF3B0] border-[3px] border-[#593A47] rounded-2xl px-4 py-3 shadow-[0_6px_0_#593A47] font-extrabold text-sm sm:text-base text-[#593A47] max-w-sm">
+          <div className="fixed top-[max(0.75rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm sm:w-auto sm:top-auto sm:left-auto sm:translate-x-0 sm:bottom-5 sm:right-5 z-[9995] bg-[#FFF3B0] border-[3px] border-[#593A47] rounded-2xl px-4 py-2.5 sm:py-3 shadow-[0_6px_0_#593A47] font-extrabold text-xs sm:text-base text-[#593A47] text-center sm:text-left pointer-events-none pop-in">
             {toastMsg}
           </div>
         )}

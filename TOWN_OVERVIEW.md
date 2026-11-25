@@ -213,7 +213,7 @@
 * Mỗi ngày mở ra 1 mẩu truyện tranh ngắn hài hước, vô tri, chữa lành xoay quanh các cư dân thị trấn.
 * **Cơ chế Cư dân gửi ý tưởng**: Người chơi gửi gợi ý tình huống $\rightarrow$ Gemini AI biên kịch $\rightarrow$ Ban quản trị duyệt $\rightarrow$ Xuất bản vinh danh người đóng góp.
 * **Cơ chế Sưu tầm**: Khách vãng lai lưu tạm mất sau 00:00; Cư dân có tài khoản được lưu vĩnh viễn vào Tủ Sách Kỷ Niệm và mở khóa Huy Hiệu Mọt Sách.
-* *(Chi tiết xem tại file `plan.md`)*.
+* *(Chi tiết lộ trình triển khai xem tại file `DEVELOPMENT_PLAN.md`)*.
 
 ### 5.2. Mở Rộng Hệ Thống Cư Dân
 * Bổ sung các cư dân mới gắn liền với các công trình trên sườn cỏ *(người dùng sẽ tự tay định hình và thiết kế lại sau)*.

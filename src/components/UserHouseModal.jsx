@@ -1,6 +1,11 @@
 import React, { useEffect } from 'react';
-import { BADGE_DEFINITIONS } from '../config/constants';
 import { CHARACTER_SPRITES } from '../data/characterSprites';
+import {
+  BADGE_CATEGORIES,
+  BADGE_TIERS,
+  ALL_BADGES,
+  LEVEL_DEFINITIONS,
+} from '../config/progressionConfig';
 
 export default function UserHouseModal({
   isOpen,
@@ -39,7 +44,7 @@ export default function UserHouseModal({
       }}
       className="fixed inset-0 z-[999] bg-[#593A47]/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
     >
-      <div className="kawaii-card w-full max-w-2xl max-h-[90vh] flex flex-col bg-[#FFFDF9] overflow-hidden relative pop-in">
+      <div className="kawaii-card w-full max-w-2xl max-h-[90dvh] flex flex-col bg-[#FFFDF9] overflow-hidden relative pop-in">
         {/* Header */}
         <div className="px-5 py-4 bg-gradient-to-r from-[#FFF3B0] via-[#FFE4EE] to-[#E2F9F0] border-b-[3px] border-[#593A47] flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
@@ -77,7 +82,7 @@ export default function UserHouseModal({
                 : 'border-transparent text-[#8C6575]'
             }`}
           >
-            🏅 Danh Hiệu &amp; Huy Hiệu ({residentStats.unlockedBadges.length}/{BADGE_DEFINITIONS.length})
+            🏅 Cấp Độ &amp; Huy Hiệu ({residentStats.unlockedBadges.length}/{ALL_BADGES.length})
           </button>
           <button
             type="button"
@@ -271,31 +276,137 @@ export default function UserHouseModal({
           )}
 
           {residentTab === 'card' && (
-            <div className="space-y-3">
-              <h4 className="font-extrabold text-sm text-[#593A47]">
-                🏆 Bộ Sưu Tập Huy Hiệu &amp; Danh Hiệu Cư Dân:
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {BADGE_DEFINITIONS.map((b) => {
-                  const isUnlocked = residentStats.unlockedBadges.some((u) => u.id === b.id);
+            <div className="space-y-4">
+              {/* THẺ CẤP ĐỘ & TIẾN ĐỘ MỞ KHÓA CƯ DÂN (LV.0 → LV.5) */}
+              {residentStats.levelInfo && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-[#FFF4BD] via-[#FFF0F6] to-[#E0F2FE] border-[2.5px] border-[#593A47] shadow-[0_4px_0_#593A47] space-y-2.5 text-left">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#FFE066] border-2 border-[#593A47] text-xs font-black text-[#593A47]">
+                        LV.{residentStats.levelInfo.level} • {residentStats.levelInfo.title}
+                      </span>
+                      <p className="text-[11px] font-bold text-[#7D5867] mt-1">
+                        Đã mở khóa <strong>{residentStats.levelInfo.unlockedResidentIds.size}/20</strong> cư dân thị trấn
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-black text-[#593A47]">
+                        🏅 {residentStats.unlockedBadges.length}/{ALL_BADGES.length}
+                      </div>
+                      <div className="text-[10px] font-bold text-[#8C6575]">Huy hiệu</div>
+                    </div>
+                  </div>
+
+                  {residentStats.levelInfo.nextDef ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-extrabold text-[#593A47]">
+                        <span>Tiến độ lên LV.{residentStats.levelInfo.nextDef.level}:</span>
+                        <span>
+                          Còn thiếu <strong>{residentStats.levelInfo.badgesToNextLevel}</strong> huy hiệu
+                        </span>
+                      </div>
+                      <div className="w-full h-3 rounded-full bg-white border-2 border-[#593A47] overflow-hidden">
+                        <div
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              ((residentStats.unlockedBadges.length - residentStats.levelInfo.currentDef.minBadges) /
+                                Math.max(
+                                  1,
+                                  residentStats.levelInfo.nextDef.minBadges -
+                                    residentStats.levelInfo.currentDef.minBadges
+                                )) *
+                                100
+                            )}%`,
+                          }}
+                          className="h-full bg-gradient-to-r from-[#FF85A9] to-[#FFE066] transition-all duration-500"
+                        />
+                      </div>
+                      <p className="text-[10.5px] font-bold text-[#16805D]">
+                        🔓 Mốc tiếp theo: {residentStats.levelInfo.nextDef.unlockNote}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-xs font-black text-[#16805D]">
+                      👑 Bạn đã đạt cấp tối đa và mở khóa toàn bộ 20/20 cư dân Thị Trấn Sao Bông!
+                    </div>
+                  )}
+
+                  {/* Bảng tóm tắt 6 mốc Level */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pt-1">
+                    {LEVEL_DEFINITIONS.map((lv) => {
+                      const reached = residentStats.levelInfo.level >= lv.level;
+                      return (
+                        <span
+                          key={lv.level}
+                          className={`shrink-0 px-2 py-0.5 rounded-lg border text-[10px] font-black ${
+                            reached
+                              ? 'bg-[#DFF8EB] border-[#593A47] text-[#16805D]'
+                              : 'bg-white/70 border-[#593A47]/30 text-[#8C6575]'
+                          }`}
+                        >
+                          Lv.{lv.level} ({lv.minBadges}🏅)
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 6 BỘ HUY HIỆU × 5 CẤP BẬC (ĐỒNG → BẠC → VÀNG → KIM CƯƠNG → PHA LÊ SAO) */}
+              <div className="space-y-3 text-left">
+                <div className="flex flex-wrap items-center justify-between gap-1">
+                  <h4 className="font-black text-sm text-[#593A47]">
+                    🏆 6 Bộ Huy Hiệu × 5 Bậc (Tổng {ALL_BADGES.length} Huy Hiệu):
+                  </h4>
+                  <span className="text-[10px] font-bold text-[#8C6575]">
+                    🥉 Đồng → 🥈 Bạc → 🥇 Vàng → 💎 Kim Cương → 🔮 Pha Lê
+                  </span>
+                </div>
+
+                {BADGE_CATEGORIES.map((cat) => {
+                  const currentVal = Number(residentStats?.[cat.statKey]) || 0;
                   return (
                     <div
-                      key={b.id}
-                      className={`p-3.5 rounded-2xl border-[2.5px] border-[#593A47] flex items-start gap-3 ${
-                        isUnlocked ? 'bg-[#FFFDF2] shadow-[0_4px_0_#593A47]' : 'bg-gray-100/70 opacity-60'
-                      }`}
+                      key={cat.id}
+                      className="p-3 rounded-2xl bg-white border-[2.5px] border-[#593A47] shadow-[0_3px_0_#593A47] space-y-2"
                     >
-                      <div className="w-11 h-11 rounded-xl bg-[#FFF3B0] border-2 border-[#593A47] flex items-center justify-center text-2xl shrink-0">
-                        {b.icon}
-                      </div>
-                      <div>
+                      <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-extrabold text-sm sm:text-base text-[#593A47]">{b.name}</span>
-                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-[#593A47] bg-white">
-                            {isUnlocked ? 'Đã mở ✓' : 'Chưa mở 🔒'}
-                          </span>
+                          <span className="text-lg">{cat.icon}</span>
+                          <span className="text-xs sm:text-sm font-black text-[#593A47]">{cat.name}</span>
                         </div>
-                        <p className="text-xs sm:text-sm font-semibold text-[#7D5867] mt-0.5">{b.desc}</p>
+                        <span className="px-2 py-0.5 rounded-full bg-[#FFF3B0] border border-[#593A47] text-[10px] font-black text-[#593A47]">
+                          Hiện có: {currentVal} {cat.unit}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {BADGE_TIERS.map((tierObj, idx) => {
+                          const req = cat.thresholds[idx];
+                          const isUnlocked = currentVal >= req;
+                          return (
+                            <div
+                              key={tierObj.key}
+                              style={{
+                                backgroundColor: isUnlocked ? tierObj.bg : '#F8FAFC',
+                                borderColor: isUnlocked ? tierObj.border : '#CBD5E1',
+                              }}
+                              title={`${cat.name} (${tierObj.name}) — Mốc ${req} ${cat.unit}`}
+                              className={`p-1.5 rounded-xl border-2 flex flex-col items-center justify-center text-center transition ${
+                                isUnlocked ? 'shadow-[0_2px_0_#593A47]' : 'opacity-50 grayscale'
+                              }`}
+                            >
+                              <span className="text-base sm:text-lg leading-none">{tierObj.emoji}</span>
+                              <span className="text-[9px] font-black text-[#593A47] mt-1 leading-none">
+                                {tierObj.name}
+                              </span>
+                              <span className="text-[9px] font-bold text-[#7D5867] mt-0.5 leading-none">
+                                {req}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );

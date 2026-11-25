@@ -68,57 +68,6 @@ export const MOOD_CONFIG = {
   }
 };
 
-export const BADGE_DEFINITIONS = [
-  {
-    id: 'newcomer',
-    icon: '🌱',
-    name: 'Mầm Non Sao Bông',
-    title: 'Cư Dân Mới Đáng Yêu',
-    desc: 'Đăng ký ngôi nhà và nhận Thẻ Cư Dân Thị Trấn Sao Bông',
-    check: () => true
-  },
-  {
-    id: 'messenger',
-    icon: '🕊️',
-    name: 'Sứ Giả Bầu Trời',
-    title: 'Sứ Giả Bầu Trời',
-    desc: 'Gửi ít nhất 1 lời chúc ấm áp lên bầu trời sao',
-    check: (stats) => stats.wishesSent >= 1
-  },
-  {
-    id: 'storyteller',
-    icon: '💌',
-    name: 'Người Gieo Hy Vọng',
-    title: 'Người Gieo Hy Vọng',
-    desc: 'Gửi từ 3 lời chúc trở lên đến cộng đồng',
-    check: (stats) => stats.wishesSent >= 3
-  },
-  {
-    id: 'warm_heart',
-    icon: '💖',
-    name: 'Trái Tim Ấm Áp',
-    title: 'Trái Tim Ấm Áp',
-    desc: 'Lời chúc của bạn nhận được từ 3 lượt thả tim cảm ơn trở lên',
-    check: (stats) => stats.likesReceived >= 3
-  },
-  {
-    id: 'beloved_star',
-    icon: '🌟',
-    name: 'Ngôi Sao Được Yêu Thích',
-    title: 'Ngôi Sao Được Yêu Thích',
-    desc: 'Lời chúc của bạn nhận được từ 10 lượt thả tim cảm ơn trở lên',
-    check: (stats) => stats.likesReceived >= 10
-  },
-  {
-    id: 'collector',
-    icon: '🏺',
-    name: 'Người Giữ Ký Ức',
-    title: 'Người Giữ Ký Ức',
-    desc: 'Lưu giữ ít nhất 2 bức thư tâm đắc vào Lọ Sao Ký Ức',
-    check: (stats) => stats.savedCount >= 2
-  }
-];
-
 export const CHARACTER_STAMPS = [
   { id: 'star', label: '⭐ Tem Sao Bông' },
   { id: 'cloud', label: '☁️ Tem Mây Xốp' },

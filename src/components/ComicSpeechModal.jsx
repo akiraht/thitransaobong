@@ -5,6 +5,7 @@ export default function ComicSpeechModal({
   character,
   isNightMode,
   isMusicPlaying,
+  questInfo = null,
   onClose,
   onTriggerSkill
 }) {
@@ -94,10 +95,24 @@ export default function ComicSpeechModal({
                 <button
                   type="button"
                   onClick={() => onTriggerSkill(character.id)}
-                  className="kawaii-btn bg-gradient-to-r from-[#FF85A9] to-[#FFA6C1] hover:from-[#FF6E99] hover:to-[#FF94B4] text-[#593A47] font-extrabold text-sm sm:text-base px-5 py-2 flex items-center gap-1.5"
+                  className={`kawaii-btn text-[#593A47] font-extrabold text-sm sm:text-base px-5 py-2 flex items-center gap-1.5 ${
+                    questInfo?.status === 'completed'
+                      ? 'bg-[#DFF8EB] hover:bg-[#C6F4DC]'
+                      : questInfo?.status === 'ready_to_claim'
+                      ? 'bg-[#FFE066] hover:bg-[#FFD166]'
+                      : 'bg-gradient-to-r from-[#FF85A9] to-[#FFA6C1] hover:from-[#FF6E99] hover:to-[#FF94B4]'
+                  }`}
                 >
                   <span>
-                    {character.id === 'moon'
+                    {questInfo
+                      ? questInfo.status === 'idle'
+                        ? `📜 Nhận Nhiệm Vụ Trên Bản Đồ (+${questInfo.rewardHearts} Tim)`
+                        : questInfo.status === 'active'
+                        ? `🗺️ Xem Gợi Ý Vị Trí (${questInfo.targets.filter((t) => t.collected).length}/${questInfo.targets.length})`
+                        : questInfo.status === 'ready_to_claim'
+                        ? `🎁 Hoàn Thành & Nhận +${questInfo.rewardHearts} Tim`
+                        : '✅ Đã Hoàn Thành Hôm Nay'
+                      : character.id === 'moon'
                       ? isNightMode
                         ? '☀️ Chuyển sang Ban Ngày'
                         : '🌙 Thắp Đèn Bầu Trời Đêm'

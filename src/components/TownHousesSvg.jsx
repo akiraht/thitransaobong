@@ -275,127 +275,64 @@ export function TownArchedHeaderSvg() {
 }
 
 /**
- * Bảng tên / Bảng hiệu gắn trên nóc (Roof Sign) của từng ngôi nhà:
- * Căn giữa trên đỉnh mái nhà, không chiếm diện tích bên hông, không bao giờ bị đè lấn nhau.
+ * Tách tên địa điểm dài thành 2 dòng cân đối theo ranh giới từ (không cắt giữa từ).
  */
-export function HouseRoofSignSvg({ name, className = '' }) {
-  const safeName = name || '';
-  const len = safeName.length;
-  const fontSize = len >= 18 ? 10 : len >= 14 ? 11 : len >= 10 ? 12 : 13;
+function formatHouseSignLines(rawName) {
+  const clean = (rawName || '').trim().replace(/\s+/g, ' ');
+  if (!clean) return [''];
+  // Nếu ngắn (<= 11 ký tự) hoặc chỉ 1 từ -> giữ 1 dòng
+  const words = clean.split(' ');
+  if (clean.length <= 11 || words.length <= 1) return [clean];
 
-  return (
-    <div
-      className={`absolute -top-7 sm:-top-8 left-1/2 -translate-x-1/2 z-40 pointer-events-auto transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-105 select-none whitespace-nowrap ${className}`}
-    >
-      <div className="relative px-3 py-1 rounded-xl bg-[#FFF6D4] border-[2.5px] border-[#593A47] shadow-[0_3px_0_#593A47] flex items-center justify-center">
-        {/* Hai sợi dây móc bảng hiệu lên mái nhà */}
-        <div className="absolute -bottom-2 left-3 w-[2.5px] h-2 bg-[#593A47]" />
-        <div className="absolute -bottom-2 right-3 w-[2.5px] h-2 bg-[#593A47]" />
-
-        {/* Đinh tán gỗ nhỏ trang trí 2 đầu */}
-        <div className="w-1.5 h-1.5 rounded-full bg-[#C98A5B] mr-1.5 border border-[#593A47]" />
-        <span
-          style={{ fontSize: `${fontSize}px` }}
-          className="font-black text-[#593A47] tracking-wide uppercase leading-none drop-shadow-[0_1px_0_#FFF8DC]"
-        >
-          {safeName}
-        </span>
-        <div className="w-1.5 h-1.5 rounded-full bg-[#C98A5B] ml-1.5 border border-[#593A47]" />
-      </div>
-    </div>
-  );
+  // Tìm điểm ngắt khoảng trắng gần giữa nhất để 2 dòng cân đối đẹp mắt
+  let bestIdx = 1;
+  let bestDiff = Infinity;
+  for (let i = 1; i < words.length; i++) {
+    const l1 = words.slice(0, i).join(' ');
+    const l2 = words.slice(i).join(' ');
+    const diff = Math.abs(l1.length - l2.length);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestIdx = i;
+    }
+  }
+  return [words.slice(0, bestIdx).join(' '), words.slice(bestIdx).join(' ')];
 }
 
 /**
- * Bảng tên gỗ của từng ngôi nhà nhân vật (thiết kế đồng bộ với bảng gỗ của "Nhà Của Bạn"),
- * đặt kế bên ngôi nhà và có cọc gỗ cắm xuống bãi cỏ.
- * Đã tối ưu kích thước bảng gỗ rộng rãi, tự động căn chỉnh cỡ chữ để không bao giờ bị tràn lề.
+ * Bảng tên gỗ của từng ngôi nhà nhân vật:
+ * - Font chữ sắc nét: 14px trên Mobile (SP), 16px trên PC.
+ * - Tự động xuống dòng đẹp mắt khi tên dài.
  */
 export function HouseWoodenSignpostSvg({ name, className = '' }) {
-  const safeName = name || '';
-  const len = safeName.length;
-  // Cỡ chữ linh hoạt theo độ dài tên địa điểm/tiệm
-  const fontSize = len >= 17 ? 11.5 : len >= 14 ? 12.5 : len >= 11 ? 13.5 : 14.5;
+  const lines = formatHouseSignLines(name);
 
   return (
-    <svg
-      viewBox="0 0 180 76"
-      className={`w-[100px] sm:w-[122px] md:w-[136px] lg:w-[148px] h-auto overflow-visible select-none drop-shadow-[0_4px_4px_rgba(89,58,71,0.18)] ${className}`}
-    >
-      {/* Bóng đổ dưới chân cọc trên bãi cỏ */}
-      <ellipse cx="90" cy="70" rx="55" ry="5.5" fill="#68B67E" opacity="0.55" />
+    <div className={`relative flex flex-col items-center select-none drop-shadow-[0_4px_4px_rgba(89,58,71,0.22)] ${className}`}>
+      {/* Mặt bảng gỗ vàng ấm */}
+      <div className="relative z-10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-[#FCE181] border-[2.5px] border-[#593A47] shadow-[inset_0_2px_0_#FFF3B8,inset_0_-2px_0_#E9C45A] flex flex-col items-center justify-center min-w-[96px] sm:min-w-[116px]">
+        {/* Đinh tán gỗ 2 đầu */}
+        <span className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-[#C98A5B] border border-[#593A47]/60" />
+        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-[#C98A5B] border border-[#593A47]/60" />
+
+        <div className="landscape-house-sign px-2 text-center font-black text-[#593A47] text-[14px] md:text-[16px] leading-[1.2] tracking-tight [text-shadow:0_1px_0_#FFF8DC]">
+          {lines.map((line, idx) => (
+            <div key={idx} className="whitespace-nowrap">
+              {line}
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* 2 Cọc gỗ cắm xuống bãi cỏ */}
-      <rect
-        x="52"
-        y="42"
-        width="11"
-        height="27"
-        rx="3"
-        fill="#C98A5B"
-        stroke="#593A47"
-        strokeWidth="3"
-      />
-      <rect
-        x="117"
-        y="42"
-        width="11"
-        height="27"
-        rx="3"
-        fill="#C98A5B"
-        stroke="#593A47"
-        strokeWidth="3"
-      />
+      <div className="relative -mt-0.5 flex items-end justify-between w-14 sm:w-16 px-2">
+        <div className="w-2.5 h-3.5 bg-[#C98A5B] border-x-2 border-b-2 border-[#593A47] rounded-b-sm" />
+        <div className="w-2.5 h-3.5 bg-[#C98A5B] border-x-2 border-b-2 border-[#593A47] rounded-b-sm" />
+      </div>
 
-      {/* Mặt bảng gỗ vàng ấm rộng rãi (160px), có khía gỗ 2 bên */}
-      <path
-        d="M 16,8 H 164 A 8,8 0 0 1 172,16 V 24 L 168,27 L 172,30 V 38 A 8,8 0 0 1 164,46 H 16 A 8,8 0 0 1 8,38 V 30 L 12,27 L 8,24 V 16 A 8,8 0 0 1 16,8 Z"
-        fill="#FCE181"
-        stroke="#593A47"
-        strokeWidth="3.2"
-        strokeLinejoin="round"
-      />
-      {/* Vân gỗ sáng & ấm */}
-      <line x1="20" y1="14" x2="160" y2="14" stroke="#FFF3B8" strokeWidth="2.2" strokeLinecap="round" />
-      <line x1="24" y1="40" x2="156" y2="40" stroke="#E9C45A" strokeWidth="2" strokeLinecap="round" />
-
-      {/* Đinh tán gỗ nhỏ 2 đầu */}
-      <circle cx="18" cy="27" r="2.2" fill="#C98A5B" />
-      <circle cx="162" cy="27" r="2.2" fill="#C98A5B" />
-
-      {/* Tên địa điểm / tiệm / trạm trên bảng gỗ - Căn giữa chuẩn xác */}
-      <text
-        x="90"
-        y="32"
-        textAnchor="middle"
-        fill="#593A47"
-        stroke="#FFF8DC"
-        strokeWidth="3"
-        paintOrder="stroke"
-        fontSize={fontSize}
-        fontWeight="900"
-        letterSpacing="0.2"
-        style={{ fontFamily: "'Nunito', 'Quicksand', sans-serif" }}
-      >
-        {safeName}
-      </text>
-
-      {/* Cụm cỏ xanh mọc ôm dưới chân 2 cọc gỗ */}
-      <path
-        d="M 42,70 Q 46,60 50,68 Q 55,58 59,68 Q 64,61 67,70 Z"
-        fill="#7ED49E"
-        stroke="#593A47"
-        strokeWidth="2.4"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M 108,70 Q 112,60 116,68 Q 121,58 125,68 Q 130,61 133,70 Z"
-        fill="#7ED49E"
-        stroke="#593A47"
-        strokeWidth="2.4"
-        strokeLinejoin="round"
-      />
-    </svg>
+      {/* Bóng cỏ nhỏ dưới chân cọc */}
+      <div className="w-16 h-2 -mt-1 rounded-full bg-[#68B67E]/65" />
+    </div>
   );
 }
 
@@ -404,12 +341,12 @@ export function HouseWoodenSignpostSvg({ name, className = '' }) {
  */
 export function UserHouseSvg({ houseTitle = 'Nhà Của Bạn', isRegistered = false, className = '' }) {
   const safeTitle = 'Nhà Của Bạn';
-  const fontSize = safeTitle.length > 15 ? 13.5 : safeTitle.length > 11 ? 15.5 : 15.5;
+  const fontSize = safeTitle.length > 15 ? 13.5 : 15.5;
 
   return (
     <svg
       viewBox="0 0 234 241"
-      className={`w-[230px] sm:w-[280px] md:w-[320px] lg:w-[350px] max-h-[32dvh] h-auto overflow-visible select-none drop-shadow-[0_12px_18px_rgba(89,58,71,0.22)] ${className}`}
+      className={`w-[138px] sm:w-[168px] md:w-[192px] lg:w-[210px] max-h-[19dvh] h-auto overflow-visible select-none drop-shadow-[0_10px_14px_rgba(89,58,71,0.22)] ${className}`}
     >
       <image
         href={HOUSE_SPRITES.user_house}
@@ -420,11 +357,12 @@ export function UserHouseSvg({ houseTitle = 'Nhà Của Bạn', isRegistered = f
         preserveAspectRatio="xMidYMid meet"
       />
 
-      {/* Tên trên bảng gỗ của Nhà User */}
+      {/* Tên căn chính giữa bảng gỗ trên nóc Nhà User */}
       <text
         x="117"
-        y="68"
+        y="38"
         textAnchor="middle"
+        dominantBaseline="central"
         fill="#593A47"
         stroke="#FFF8DC"
         strokeWidth="3.5"
@@ -437,7 +375,7 @@ export function UserHouseSvg({ houseTitle = 'Nhà Của Bạn', isRegistered = f
       </text>
 
       {isRegistered && (
-        <g transform="translate(168, 38)">
+        <g transform="translate(178, 16)">
           <circle cx="12" cy="12" r="11" fill="#FFE066" stroke="#593A47" strokeWidth="2.5" />
           <text x="12" y="16" textAnchor="middle" fontSize="12">
             👑
