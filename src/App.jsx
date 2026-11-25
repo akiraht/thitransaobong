@@ -57,10 +57,15 @@ export default function App() {
   const timePeriod = useMemo(() => {
     if (isNightMode) return 'night';
     if (timeMode !== 'auto') return timeMode;
-    const h = new Date(nowMs).getHours();
-    if (h >= 5 && h < 11) return 'morning';
-    if (h >= 11 && h < 17) return 'afternoon';
-    if (h >= 17 && h < 21) return 'evening';
+    const now = new Date(nowMs);
+    const timeVal = now.getHours() + now.getMinutes() / 60;
+    // 05:30 -> 11:00: Buổi sáng trong veo
+    if (timeVal >= 5.5 && timeVal < 11.0) return 'morning';
+    // 11:00 -> 17:30: Buổi trưa chiều vàng ấm
+    if (timeVal >= 11.0 && timeVal < 17.5) return 'afternoon';
+    // 17:30 -> 19:15: Buổi tối chập choạng hoàng hôn
+    if (timeVal >= 17.5 && timeVal < 19.25) return 'evening';
+    // 19:15 -> 05:30: Ban đêm sâu thẳm đầy sao & đom đóm
     return 'night';
   }, [nowMs, timeMode, isNightMode]);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
@@ -154,7 +159,7 @@ export default function App() {
       if (musicIntervalRef.current) clearInterval(musicIntervalRef.current);
       musicIntervalRef.current = null;
       setIsMusicPlaying(false);
-      showToast('🔇 Đã tắt đài nhạc của Bé Tia Chớp.');
+      showToast('🔇 Đã tắt đài nhạc của Anh Tia Chớp.');
       return;
     }
     try {
@@ -423,7 +428,7 @@ export default function App() {
   };
 
   // Kích hoạt Kỹ Năng từ Hộp Thoại Truyện Tranh của từng nhân vật
-  // (Đã đổi: Bác Mây Xốp -> Thẻ Cư Dân; Bé Cầu Vồng -> Dự Báo Thời Tiết)
+  // (Đã đổi: Bác Mây Xốp -> Thẻ Cư Dân; Chị Cầu Vồng -> Dự Báo Thời Tiết)
   const handleTriggerCharacterSkill = (charId) => {
     setSelectedStreetChar(null);
 
@@ -438,7 +443,7 @@ export default function App() {
       return;
     }
     if (charId === 'rainbow') {
-      // Bé Cầu Vồng: Dự báo Thời tiết Thị trấn
+      // Chị Cầu Vồng: Dự báo Thời tiết Thị trấn
       setActiveSkillPanel('weather');
       return;
     }
@@ -447,7 +452,7 @@ export default function App() {
         const next = !prev;
         if (next) {
           setTimeMode('night');
-          showToast('🌌 Bé Trăng Khuyết đã thắp sáng Bầu Trời Khuya Thị Trấn!');
+          showToast('🌌 Chú Trăng Khuyết đã thắp sáng Bầu Trời Khuya Thị Trấn!');
         } else {
           setTimeMode('auto');
           showToast('🕒 Đã chuyển bầu trời về chế độ Thời Gian Thực Tự Động!');
@@ -938,6 +943,13 @@ export default function App() {
             resident={resident}
             residentStats={residentStats}
             historyCount={historyList.length}
+            isMovementLocked={Boolean(
+              selectedStreetChar ||
+              activeSkillPanel ||
+              isResidentModalOpen ||
+              isSidebarOpen ||
+              modalStep
+            )}
             onOpenHistoryModal={() => setIsSidebarOpen(true)}
             onSelectCharacter={(char) => setSelectedStreetChar(char)}
             onOpenUserHouse={() => setIsResidentModalOpen(true)}
@@ -1002,6 +1014,13 @@ export default function App() {
             }))
           }
           onToggleSaveMemory={handleToggleSaveMemory}
+          onSelectAvatar={(avatarId) => {
+            updateResident((prev) => ({
+              ...prev,
+              avatarChoice: avatarId
+            }));
+            showToast('✨ Đã thay đổi ngoại hình cho bạn nhỏ thành công!');
+          }}
           onClose={() => setIsResidentModalOpen(false)}
         />
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import CharacterAvatar from './CharacterAvatar';
 import { CHARACTER_STAMPS } from '../config/constants';
 
@@ -24,6 +24,18 @@ export default function SkillModals({
   onWishSubmit,
   onClose
 }) {
+  useEffect(() => {
+    if (!activeSkillPanel) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeSkillPanel, onClose]);
+
   if (!activeSkillPanel) return null;
 
   const isWishModal = activeSkillPanel === 'wish';
@@ -33,7 +45,7 @@ export default function SkillModals({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 bg-[#593A47]/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-[950] bg-[#593A47]/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
     >
       <div
         className={`kawaii-card w-full ${
@@ -86,26 +98,40 @@ export default function SkillModals({
                       />
                     </div>
                     <div>
-                      <label
-                        htmlFor="wishMoodTagSelect"
-                        className="block text-sm sm:text-base font-extrabold text-[#593A47] mb-1"
-                      >
-                        Dành tặng cho tâm trạng nào?
-                      </label>
-                      <select
-                        id="wishMoodTagSelect"
-                        value={wishMood}
-                        onChange={(e) => setWishMood(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-2xl bg-white border-[2.5px] border-[#593A47] text-sm font-bold text-[#593A47] focus:outline-none focus:ring-4 focus:ring-pink-200"
-                      >
-                        <option value="all">🌈 Tất cả mọi tâm trạng</option>
-                        <option value="bad">🌧️ Đang buồn / Tệ (Cần an ủi)</option>
-                        <option value="tired">☁️ Đang mệt mỏi (Cần nạp năng lượng)</option>
-                        <option value="normal">🍀 Ngày bình yên (Nhẹ nhàng)</option>
-                        <option value="excited">💖 Đang hào hứng (Truyền cảm hứng)</option>
-                        <option value="happy">✨ Đang hạnh phúc (Nhân đôi niềm vui)</option>
-                      </select>
-                    </div>
+                        <label
+                          htmlFor="wishMoodTagSelect"
+                          className="block text-xs sm:text-sm font-extrabold text-[#593A47] mb-1"
+                        >
+                          Dành tặng cho tâm trạng nào?
+                        </label>
+                        <div className="relative">
+                          <select
+                            id="wishMoodTagSelect"
+                            value={wishMood}
+                            onChange={(e) => setWishMood(e.target.value)}
+                            className="w-full appearance-none px-4 pr-12 py-2.5 rounded-2xl bg-white border-[2.5px] border-[#593A47] text-sm font-bold text-[#593A47] focus:outline-none focus:ring-4 focus:ring-pink-200"
+                          >
+                            <option value="all">🌈 Tất cả mọi tâm trạng</option>
+                            <option value="bad">🌧️ Đang buồn / Tệ (Cần an ủi)</option>
+                            <option value="tired">☁️ Đang mệt mỏi (Cần nạp năng lượng)</option>
+                            <option value="normal">🍀 Ngày bình yên (Nhẹ nhàng)</option>
+                            <option value="excited">💖 Đang hào hứng (Truyền cảm hứng)</option>
+                            <option value="happy">✨ Đang hạnh phúc (Nhân đôi niềm vui)</option>
+                          </select>
+                          <svg
+                            aria-hidden="true"
+                            className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#593A47]"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="m6 9 6 6 6-6" />
+                          </svg>
+                        </div>
+                      </div>
                   </div>
 
                   <div>
@@ -181,14 +207,14 @@ export default function SkillModals({
           </div>
         )}
 
-        {/* 2. KỸ NĂNG DỰ BÁO THỜI TIẾT CỦA BÉ CẦU VỒNG & GIỌT MƯA */}
+        {/* 2. KỸ NĂNG DỰ BÁO THỜI TIẾT CỦA CHỊ CẦU VỒNG & GIỌT MƯA */}
         {activeSkillPanel === 'weather' && (
           <div className="space-y-4">
             <div className="flex justify-center">
               <CharacterAvatar id="rainbow" className="w-28 h-24" />
             </div>
             <span className="inline-block px-3 py-0.5 rounded-full bg-[#DFF8EB] border-2 border-[#593A47] text-xs sm:text-sm font-extrabold text-[#593A47]">
-              🌦️ Đài Khí Tượng Số 06 • Bé Cầu Vồng
+              🌦️ Đài Khí Tượng Số 06 • Chị Cầu Vồng
             </span>
             <h3 className="text-lg sm:text-xl font-extrabold text-[#593A47]">
               Bản Tin Thời Tiết Cảm Xúc Thị Trấn
@@ -204,14 +230,14 @@ export default function SkillModals({
           </div>
         )}
 
-        {/* 3. KỸ NĂNG HÍT THỞ CHỮA LÀNH CỦA BÉ NGÂN HÀ */}
+        {/* 3. KỸ NĂNG HÍT THỞ CHỮA LÀNH CỦA CHỊ NGÂN HÀ */}
         {activeSkillPanel === 'breathe' && (
           <div className="space-y-4">
             <div className="flex justify-center">
               <CharacterAvatar id="nebula" className="w-28 h-24" />
             </div>
             <span className="inline-block px-3 py-0.5 rounded-full bg-[#F3E5FF] border-2 border-[#593A47] text-xs sm:text-sm font-extrabold text-[#593A47]">
-              🍵 Tiệm Trà Số 07 • Bé Ngân Hà
+              🍵 Tiệm Trà Số 07 • Chị Ngân Hà
             </span>
             <h3 className="text-lg sm:text-xl font-extrabold text-[#593A47]">
               Hơi Thở Hương Trà Tinh Vân (4-4-4)
@@ -227,14 +253,14 @@ export default function SkillModals({
           </div>
         )}
 
-        {/* 4. KỸ NĂNG LÒ BÁNH NẮNG ẤM CỦA BÉ NẮNG MAI */}
+        {/* 4. KỸ NĂNG LÒ BÁNH NẮNG ẤM CỦA CÔ NẮNG MAI */}
         {activeSkillPanel === 'quest' && (
           <div className="space-y-4">
             <div className="flex justify-center">
               <CharacterAvatar id="sun" className="w-28 h-24" />
             </div>
             <span className="inline-block px-3 py-0.5 rounded-full bg-[#FFE5D4] border-2 border-[#593A47] text-xs sm:text-sm font-extrabold text-[#593A47]">
-              🥐 Tiệm Bánh Số 02 • Bé Nắng Mai
+              🥐 Tiệm Bánh Số 02 • Cô Nắng Mai
             </span>
             <h3 className="text-lg sm:text-xl font-extrabold text-[#593A47]">
               Món Quà Nhỏ Từ Lò Bánh Bình Minh

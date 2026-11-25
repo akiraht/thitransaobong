@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import CharacterAvatar from './CharacterAvatar';
 
 export default function ComicSpeechModal({
@@ -8,6 +8,18 @@ export default function ComicSpeechModal({
   onClose,
   onTriggerSkill
 }) {
+  useEffect(() => {
+    if (!character) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [character, onClose]);
+
   if (!character) return null;
 
   return (
@@ -15,7 +27,7 @@ export default function ComicSpeechModal({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 bg-[#593A47]/60 backdrop-blur-xs flex items-center justify-center p-4"
+      className="fixed inset-0 z-[950] bg-[#593A47]/60 backdrop-blur-xs flex items-center justify-center p-4"
     >
       {/* COMIC BOOK STYLE DIALOG BOX */}
       <div className="comic-speech-box w-full max-w-2xl p-6 sm:p-7 relative pop-in">

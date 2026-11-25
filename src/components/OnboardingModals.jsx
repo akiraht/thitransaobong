@@ -73,7 +73,7 @@ export default function OnboardingModals({
   // BƯỚC 1: MODAL "NGÀY HÔM NAY CỦA BẠN THẾ NÀO?" (CÓ HIỆU ỨNG BÙNG NỔ ÁNH SAO THEO TÂM TRẠNG)
   if (step === 'mood') {
     return (
-      <div className="fixed inset-0 z-50 bg-[#593A47]/65 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+      <div className="fixed inset-0 z-[999] bg-[#593A47]/65 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
         {activeMoodCfg && <MagicalCelebrationParticles key={burstKey} count={16} />}
 
         <div
@@ -168,7 +168,7 @@ export default function OnboardingModals({
   // BƯỚC 2: MODAL "HỘP NGÔI SAO HY VỌNG" (HIỆU ỨNG VÒNG HÀO QUANG PHÉP THUẬT XOAY & RÚT SAO GACHA)
   if (step === 'jar') {
     return (
-      <div className="fixed inset-0 z-50 bg-[#593A47]/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-hidden">
+      <div className="fixed inset-0 z-[999] bg-[#593A47]/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-hidden">
         <MagicalCelebrationParticles key={'jar-particles'} count={20} />
 
         <div className="kawaii-card w-full max-w-lg p-6 sm:p-8 bg-gradient-to-b from-[#FFFDF7] via-[#FFF5FA] to-[#E8F8FF] text-center relative modal-spring-enter flex flex-col items-center overflow-hidden">
@@ -305,7 +305,7 @@ export default function OnboardingModals({
         onClick={(e) => {
           if (e.target === e.currentTarget) onCloseFlowAndUnlockTown();
         }}
-        className="fixed inset-0 z-50 bg-[#593A47]/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+        className="fixed inset-0 z-[999] bg-[#593A47]/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
       >
         <MagicalCelebrationParticles key={'letter-particles'} count={26} />
 
