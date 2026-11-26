@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getMapUnlockLevel, isMapUnlockedAtLevel } from '../config/progressionConfig';
 
 export const MAP_NAV_LIST = [
   {
@@ -50,6 +51,7 @@ export const MAP_NAV_LIST = [
  */
 export default function TownMapSwitcher({
   currentMapId,
+  currentLevel = 0,
   onSelectMap,
   isTransitioning = false,
 }) {
@@ -94,6 +96,8 @@ export default function TownMapSwitcher({
         >
           {MAP_NAV_LIST.map((item) => {
             const isActive = currentMapId === item.id;
+            const isLocked = !isMapUnlockedAtLevel(item.id, currentLevel);
+            const reqLv = getMapUnlockLevel(item.id);
             return (
               <div
                 key={item.id}
@@ -109,16 +113,20 @@ export default function TownMapSwitcher({
                 aria-label={`${item.title} (${item.houseCount} ngôi nhà)`}
                 className={`group relative flex items-center cursor-pointer pointer-events-auto transition-transform duration-200 ${
                   isActive ? 'scale-105' : 'hover:scale-105'
-                }`}
+                } ${isLocked ? 'opacity-75 grayscale-[45%]' : ''}`}
               >
                 {/* Tooltip tên map hiện mượt bên trái khi hover */}
                 <div className="pointer-events-none absolute right-full mr-2.5 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-xl bg-[#FFFDF9] border-[2.5px] border-[#593A47] shadow-[0_3px_0_#593A47] opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 whitespace-nowrap z-30">
                   <div className="text-xs font-black text-[#593A47] flex items-center gap-1">
-                    <span>{item.accentEmoji}</span>
+                    <span>{isLocked ? '🔒' : item.accentEmoji}</span>
                     <span>{item.title}</span>
                   </div>
                   <div className="text-[10px] font-bold text-[#7D5867]">
-                    {isActive ? '📍 Đang ở phân khu này' : `${item.subtitle} • ${item.houseCount} nhà`}
+                    {isLocked
+                      ? `Mở khóa ở LV.${reqLv} (2 Huy Hiệu)`
+                      : isActive
+                        ? '📍 Đang ở phân khu này'
+                        : `${item.subtitle} • ${item.houseCount} nhà`}
                   </div>
                 </div>
 
@@ -130,6 +138,11 @@ export default function TownMapSwitcher({
                       : 'drop-shadow-[0_4px_6px_rgba(89,58,71,0.45)]'
                   }`}
                 >
+                  {isLocked && (
+                    <span className="absolute -top-1 -right-1 z-20 px-1.5 py-0.5 rounded-full bg-[#593A47] text-[#FFE066] border border-[#FFE066] text-[9px] font-black shadow">
+                      🔒 LV.{reqLv}
+                    </span>
+                  )}
                   <img
                     src={item.iconSrc}
                     alt={item.title}

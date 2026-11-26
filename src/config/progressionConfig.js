@@ -152,64 +152,90 @@ export function getBadgeById(badgeId) {
 }
 
 /**
- * HỆ THỐNG CẤP ĐỘ NHÂN VẬT (LV.0 → LV.5) & MỞ KHÓA CƯ DÂN TỪ TỪ
- * - Lv.0 (0 huy hiệu): 8 cư dân khởi đầu (Map 1: 3, Map 2: 2, Map 3: 3)
- * - Số huy hiệu cần để lên Lv mới tăng dần: +2 -> +3 -> +4 -> +5 -> +6 (0, 2, 5, 9, 14, 20)
+ * HỆ THỐNG CẤP ĐỘ NHÂN VẬT (LV.0 → LV.5) & MỞ KHÓA KHU VỰC (PHƯƠNG ÁN 2)
+ * - Lv.0 (0 huy hiệu): Mở sẵn toàn bộ 16 cư dân tại 3 Map chính (Đỉnh Đồi, Thiên Văn, Ngõ Thời Tiết) + 5/6 Mini-Game!
+ * - Lv.1 (2 huy hiệu): Mở khóa Khu Phố Bí Mật Map 4 — Hẻm Xoáy Tinh Nghịch (4 cư dân tinh nghịch + game Ném Tuyết)!
+ * - Lv.2 → Lv.5: Mở khóa Danh hiệu, Skin nhân vật đặc biệt, Truyện tranh & đặc quyền cư dân.
  */
+export const MAP_UNLOCK_LEVELS = {
+  map_hope_hill: 0,
+  map_astronomy_valley: 0,
+  map_weather_lane: 0,
+  map_mischief_alley: 1,
+};
+
+export function getMapUnlockLevel(mapId) {
+  return MAP_UNLOCK_LEVELS[mapId] ?? 0;
+}
+
+export function isMapUnlockedAtLevel(mapId, level = 0) {
+  return level >= getMapUnlockLevel(mapId);
+}
+
 export const LEVEL_DEFINITIONS = [
   {
     level: 0,
     minBadges: 0,
     title: '🌱 Cư Dân Tập Sự',
     unlockResidents: [
-      // Map 1 (3): Đỉnh Đồi Hy Vọng
+      // Map 1: Đỉnh Đồi Hy Vọng (5)
       'star',
       'cloud',
       'sun',
-      // Map 2 (2): Thung Lũng Thiên Văn
+      'shooting_star',
+      'rainbow',
+      // Map 2: Thung Lũng Thiên Văn (6)
       'moon',
+      'nebula',
       'aurora',
-      // Map 3 (3): Ngõ Thời Tiết
+      'saturn',
+      'firefly',
+      'north_star',
+      // Map 3: Ngõ Thời Tiết (5)
+      'spark',
       'dewdrop',
       'breeze',
+      'snowflake',
       'sunset',
     ],
-    unlockNote: 'Khởi đầu với 8 cư dân tại Đỉnh Đồi (3), Thiên Văn (2) & Ngõ Thời Tiết (3).',
+    unlockNote: 'Mở sẵn 16 cư dân tại 3 bản đồ chính (Đỉnh Đồi, Thiên Văn & Ngõ Thời Tiết) cùng 5 Mini-Game!',
   },
   {
     level: 1,
     minBadges: 2,
     title: '⭐ Bạn Thân Thị Trấn',
-    unlockResidents: ['rainbow', 'shooting_star', 'nebula'],
-    unlockNote: 'Mở khóa Chị Cầu Vồng, Bé Sao Băng & Chị Ngân Hà + nhiệm vụ mới!',
+    unlockMapId: 'map_mischief_alley',
+    unlockResidents: ['storm_cloud', 'whirlwind', 'black_hole', 'mirage_fog'],
+    unlockNote:
+      'Mở khóa Khu Phố Bí Mật Map 4 — Hẻm Xoáy Tinh Nghịch (4 nhân vật tinh nghịch + Mini-Game Ném Tuyết Tọa Độ)!',
   },
   {
     level: 2,
     minBadges: 5,
     title: '🌈 Người Gieo Nắng Ấm',
-    unlockResidents: ['spark', 'snowflake', 'saturn'],
-    unlockNote: 'Mở khóa Anh Tia Chớp, Cô Tuyết Bông & Tủ Sách Bác Sao Thổ!',
+    unlockResidents: [],
+    unlockNote: 'Mở khóa danh hiệu Người Gieo Nắng Ấm & các tập truyện tranh đặc biệt mới!',
   },
   {
     level: 3,
     minBadges: 9,
     title: '🌙 Nhà Thám Hiểm Sao',
-    unlockResidents: ['firefly', 'north_star', 'storm_cloud'],
-    unlockNote: 'Mở khóa Bé Đom Đóm, Ông Sao Bắc Đẩu & cổng vào Hẻm Xoáy (Nhóc Mây Giông)!',
+    unlockResidents: [],
+    unlockNote: 'Mở khóa trang phục đặc biệt Thám Hiểm Sao (LV.3) trong Tủ Đồ Ngôi Nhà!',
   },
   {
     level: 4,
     minBadges: 14,
     title: '💎 Hiệp Sĩ Sao Bông',
-    unlockResidents: ['whirlwind', 'black_hole'],
-    unlockNote: 'Mở khóa Tí Lốc Xoáy & Bé Hố Đen cùng chuỗi nhiệm vụ săn đồ khắp thị trấn!',
+    unlockResidents: [],
+    unlockNote: 'Mở khóa trang phục Hiệp Sĩ Sao Bông (LV.4) cùng danh hiệu cao quý!',
   },
   {
     level: 5,
     minBadges: 20,
     title: '👑 Đại Sứ Pha Lê',
-    unlockResidents: ['mirage_fog'],
-    unlockNote: 'Mở khóa cư dân cuối cùng Cậu Sương Mù — trọn bộ 20/20 cư dân Thị Trấn Sao Bông!',
+    unlockResidents: [],
+    unlockNote: 'Đạt cấp độ tối thượng Đại Sứ Pha Lê & mở khóa trang phục Pha Lê Sao (LV.5)!',
   },
 ];
 

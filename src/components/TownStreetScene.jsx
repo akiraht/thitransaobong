@@ -18,9 +18,16 @@ import {
   getMapWalkBounds
 } from '../data/townMapsConfig';
 import TownMapSwitcher, { CloudTransitionOverlay } from './TownMapSwitcher';
+import MapIntroModal from './MapIntroModal';
 import QuestTrackerHud from './QuestTrackerHud';
 import { TOWN_CHARACTERS } from '../data/characterSprites';
-import { getResidentUnlockLevel } from '../config/progressionConfig';
+import {
+  getResidentUnlockLevel,
+  getMapUnlockLevel,
+  isMapUnlockedAtLevel,
+} from '../config/progressionConfig';
+
+const VISITED_MAPS_STORAGE_KEY = 'TTSB_VISITED_MAPS_V1';
 
 const MAP_ASPECT_RATIO = 16 / 9;
 
@@ -208,9 +215,57 @@ export default function TownStreetScene({
     [isPannable, maxCameraX, worldWidth, viewport.w]
   );
 
-  // State quản lý Hệ thống 4 Map độc lập
-  const [currentMapId, setCurrentMapId] = useState('map_hope_hill');
+  // State quản lý Hệ thống 4 Map độc lập (lưu map đang đứng để khi từ Mini-Game quay về sẽ trở lại đúng map đó)
+  const currentLevel = levelInfo?.level ?? 0;
+  const [currentMapId, setCurrentMapId] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('TTSB_LAST_TOWN_MAP_ID');
+      if (saved && MAP_DICT[saved]) return saved;
+    } catch {
+      // ignore storage errors
+    }
+    return 'map_hope_hill';
+  });
+  const [introMapData, setIntroMapData] = useState(null);
+  const [mapLockNotice, setMapLockNotice] = useState('');
   const [isTransitioning, setIsTransitioning] = useState(false);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('TTSB_LAST_TOWN_MAP_ID', currentMapId);
+    } catch {
+      // ignore storage errors
+    }
+  }, [currentMapId]);
+
+  // Nếu người chơi đang ở Map chưa mở khóa (ví dụ reload ở Map 4 khi mới LV.0) thì tự đưa về Map 1
+  useEffect(() => {
+    if (!isMapUnlockedAtLevel(currentMapId, currentLevel)) {
+      setCurrentMapId('map_hope_hill');
+    }
+  }, [currentMapId, currentLevel]);
+
+  // Tự động hiện Popup Giới Thiệu Bản Đồ khi người chơi LẦN ĐẦU đặt chân đến map đó
+  useEffect(() => {
+    if (!isTownUnlocked || isTransitioning) return undefined;
+    try {
+      const raw = localStorage.getItem(VISITED_MAPS_STORAGE_KEY);
+      const visited = raw ? JSON.parse(raw) : [];
+      const list = Array.isArray(visited) ? visited : [];
+      if (!list.includes(currentMapId)) {
+        const nextList = [...list, currentMapId];
+        localStorage.setItem(VISITED_MAPS_STORAGE_KEY, JSON.stringify(nextList));
+        const targetMap = MAP_DICT[currentMapId] || TOWN_MAPS[0];
+        const timer = setTimeout(() => {
+          setIntroMapData(targetMap);
+        }, 380);
+        return () => clearTimeout(timer);
+      }
+    } catch {
+      // ignore storage errors
+    }
+    return undefined;
+  }, [currentMapId, isTownUnlocked, isTransitioning]);
   const currentMapData = MAP_DICT[currentMapId] || TOWN_MAPS[0];
   const currentObstacles = getMapObstacles(currentMapId);
   const currentLandmarks = getMapLandmarks(currentMapId);
@@ -241,8 +296,21 @@ export default function TownStreetScene({
     }
   }, [isPannable, isFollowAvatar, isPanning, currentAvatarPos.x, calcCenteredCamX, maxCameraX]);
 
+  const showMapLockHint = useCallback((targetMapId) => {
+    const reqLv = getMapUnlockLevel(targetMapId);
+    const targetName = MAP_DICT[targetMapId]?.name || 'Khu vực bí mật';
+    setMapLockNotice(
+      `🔒 ${targetName} mở khóa ở LV.${reqLv} (chỉ cần 2 Huy Hiệu — hoàn thành 1–2 nhiệm vụ là mở ngay!)`
+    );
+    setTimeout(() => setMapLockNotice(''), 3400);
+  }, []);
+
   const handleSelectMap = (newMapId) => {
     if (newMapId === currentMapId || isTransitioning) return;
+    if (!isMapUnlockedAtLevel(newMapId, currentLevel)) {
+      showMapLockHint(newMapId);
+      return;
+    }
     setIsTransitioning(true);
     setTimeout(() => {
       setCurrentMapId(newMapId);
@@ -261,6 +329,10 @@ export default function TownStreetScene({
   const handleTriggerPortal = useCallback(
     (portal) => {
       if (isTransitioning) return;
+      if (!isMapUnlockedAtLevel(portal.targetMapId, currentLevel)) {
+        showMapLockHint(portal.targetMapId);
+        return;
+      }
       setIsTransitioning(true);
       setTimeout(() => {
         setCurrentMapId(portal.targetMapId);
@@ -273,7 +345,7 @@ export default function TownStreetScene({
         setIsTransitioning(false);
       }, 700);
     },
-    [isTransitioning, calcCenteredCamX]
+    [isTransitioning, calcCenteredCamX, currentLevel, showMapLockHint]
   );
 
   const handlePlayerMove = useCallback(
@@ -527,12 +599,26 @@ export default function TownStreetScene({
         </button>
       )}
 
+      {/* THÔNG BÁO KHI CHẠM CỔNG / ICON MAP 4 CHƯA MỞ KHÓA */}
+      {mapLockNotice && (
+        <div
+          style={{ top: 'calc(max(0.75rem, env(safe-area-inset-top)) + 56px)' }}
+          className="fixed left-1/2 -translate-x-1/2 z-[1150] px-4 py-2.5 rounded-2xl bg-[#FFF3B0] border-[2.5px] border-[#593A47] shadow-[0_5px_0_#593A47] text-xs sm:text-sm font-black text-[#593A47] text-center max-w-[92vw] pop-in"
+        >
+          {mapLockNotice}
+        </div>
+      )}
+
       {/* 4 ICON MAP GÓC TRÊN PHẢI (PC XẾP DỌC 50% / MOBILE DROPDOWN MODAL) */}
       <TownMapSwitcher
         currentMapId={currentMapId}
+        currentLevel={currentLevel}
         onSelectMap={handleSelectMap}
         isTransitioning={isTransitioning}
       />
+
+      {/* POPUP GIỚI THIỆU BẢN ĐỒ LẦN ĐẦU ĐẶT CHÂN ĐẾN */}
+      <MapIntroModal mapData={introMapData} onClose={() => setIntroMapData(null)} />
 
       {/* HIỆU ỨNG MÂY TRẮNG CHUYỂN CẢNH */}
       <CloudTransitionOverlay
@@ -688,37 +774,132 @@ export default function TownStreetScene({
             </button>
           ))}
 
-        {/* CÁC CỔNG DỊCH CHUYỂN (WARP PORTALS) SANG PHÂN KHU KHÁC */}
-        {currentMapData.portals && currentMapData.portals.map((portal) => (
-          <div
-            key={portal.id}
-            style={{
-              left: `${portal.x}%`,
-              top: `${portal.y}%`,
-              zIndex: Math.floor(portal.y * 10) + 15
-            }}
-            className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto select-none"
-          >
-            <button
-              type="button"
-              onClick={() => handleTriggerPortal(portal)}
-              title={`Đi đến ${portal.label}`}
-              className="group flex flex-col items-center focus:outline-none transition-transform duration-300 hover:scale-110 active:scale-95 cursor-pointer"
-            >
-              <div className="relative flex items-center justify-center">
-                <div className="w-10 h-4.5 rounded-full bg-[#FFE066]/35 border-2 border-dashed border-[#593A47] animate-pulse" />
-                <span className="absolute text-base group-hover:translate-y-[-2px] transition-transform">
-                  {portal.icon}
-                </span>
-              </div>
+        {/* CÁC CỔNG DỊCH CHUYỂN (WARP PORTALS) THIẾT KẾ DẠNG CỔNG VÒM PHÁT SÁNG NỔI BẬT */}
+        {currentMapData.portals &&
+          currentMapData.portals.map((portal) => {
+            const isPortalUnlocked = isMapUnlockedAtLevel(portal.targetMapId, currentLevel);
+            const reqLv = getMapUnlockLevel(portal.targetMapId);
+            const isMischief = portal.targetMapId === 'map_mischief_alley';
+            return (
+              <div
+                key={portal.id}
+                style={{
+                  left: `${portal.x}%`,
+                  top: `${portal.y}%`,
+                  zIndex: Math.floor(portal.y * 10) + 18,
+                }}
+                className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto select-none"
+              >
+                <button
+                  type="button"
+                  onClick={() => handleTriggerPortal(portal)}
+                  title={
+                    isPortalUnlocked
+                      ? `Đi qua cổng đến ${portal.label}`
+                      : `Cổng đến ${portal.label} — Mở khóa ở LV.${reqLv}`
+                  }
+                  className="group flex flex-col items-center focus:outline-none transition-transform duration-300 hover:scale-110 active:scale-95 cursor-pointer"
+                >
+                  {/* Cổng vòm phép thuật Kawaii phát sáng */}
+                  <div className="relative flex items-center justify-center">
+                    {/* Hào quang tỏa sáng sau cổng */}
+                    <div
+                      className={`absolute -inset-2 rounded-full blur-md animate-pulse ${
+                        !isPortalUnlocked
+                          ? 'bg-[#94A3B8]/35'
+                          : isMischief
+                            ? 'bg-[#C084FC]/55'
+                            : 'bg-[#FFE066]/65'
+                      }`}
+                    />
+                    <svg
+                      viewBox="0 0 110 110"
+                      className={`relative w-16 h-16 sm:w-20 sm:h-20 drop-shadow-[0_5px_6px_rgba(89,58,71,0.35)] ${
+                        !isPortalUnlocked ? 'grayscale-[45%] opacity-90' : ''
+                      }`}
+                    >
+                      <defs>
+                        <radialGradient id={`portalGlow_${portal.id}`} cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#FFFFFF" />
+                          <stop
+                            offset="52%"
+                            stopColor={!isPortalUnlocked ? '#CBD5E1' : isMischief ? '#D8B4FE' : '#BAE6FD'}
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor={!isPortalUnlocked ? '#94A3B8' : isMischief ? '#9333EA' : '#FF85A9'}
+                          />
+                        </radialGradient>
+                      </defs>
 
-              <div className="mt-1 px-2.5 py-0.5 rounded-full bg-[#593A47] text-white border border-[#FFE066] text-[10px] sm:text-xs font-black shadow-md flex items-center gap-1 whitespace-nowrap">
-                <span>{portal.arrow}</span>
-                <span>{portal.label}</span>
+                      {/* Nền bệ đá chân cổng */}
+                      <ellipse cx="55" cy="96" rx="44" ry="9" fill="#FFE066" stroke="#593A47" strokeWidth="3.5" />
+
+                      {/* Vòm ngoài của cổng */}
+                      <path
+                        d="M16 95 L16 52 A39 39 0 0 1 94 52 L94 95 Z"
+                        fill={isMischief ? '#F3E8FF' : '#FFFDF9'}
+                        stroke="#593A47"
+                        strokeWidth="4.5"
+                        strokeLinejoin="round"
+                      />
+
+                      {/* Lõi xoáy phép thuật phát sáng bên trong */}
+                      <path
+                        d="M27 94 L27 54 A28 28 0 0 1 83 54 L83 94 Z"
+                        fill={`url(#portalGlow_${portal.id})`}
+                        stroke="#593A47"
+                        strokeWidth="3"
+                      />
+
+                      {/* Vòng xoáy năng lượng */}
+                      <circle
+                        cx="55"
+                        cy="60"
+                        r="18"
+                        fill="none"
+                        stroke="#FFFFFF"
+                        strokeWidth="2.8"
+                        strokeDasharray="8 6"
+                        opacity="0.9"
+                      />
+
+                      {/* Ngôi sao đỉnh cổng */}
+                      <circle cx="55" cy="14" r="10" fill="#FFE066" stroke="#593A47" strokeWidth="3" />
+                    </svg>
+
+                    {/* Icon phân khu ở giữa lõi cổng */}
+                    <span className="absolute top-[46%] text-xl sm:text-2xl drop-shadow group-hover:-translate-y-1 transition-transform">
+                      {isPortalUnlocked ? portal.icon : '🔒'}
+                    </span>
+
+                    {/* Chấm sao nhấp nháy trang trí */}
+                    {isPortalUnlocked && (
+                      <span className="absolute -top-1 -right-1 text-sm animate-bounce pointer-events-none">
+                        ✨
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Bảng tên điểm đến nổi bật */}
+                  <div
+                    className={`-mt-1 px-3 py-1 rounded-full border-[2.5px] text-[10px] sm:text-xs font-black shadow-[0_3px_0_#593A47] flex items-center gap-1 whitespace-nowrap ${
+                      !isPortalUnlocked
+                        ? 'bg-[#593A47] text-[#FFE066] border-[#FFE066]'
+                        : isMischief
+                          ? 'bg-[#9333EA] text-white border-[#593A47]'
+                          : 'bg-[#FFE066] text-[#593A47] border-[#593A47]'
+                    }`}
+                  >
+                    <span>{isPortalUnlocked ? portal.arrow : '🔒'}</span>
+                    <span>
+                      {isPortalUnlocked ? portal.label : `${portal.label} (LV.${reqLv})`}
+                    </span>
+                  </div>
+                </button>
               </div>
-            </button>
-          </div>
-        ))}
+            );
+          })}
 
         {/* NHÂN VẬT ĐI DẠO COZY WALK 2.5D */}
         <CozyWalkAvatar

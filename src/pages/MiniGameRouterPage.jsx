@@ -8,6 +8,7 @@ const BakingMiniGame = lazy(() => import('./minigames/BakingMiniGame'));
 const PuzzleMiniGame = lazy(() => import('./minigames/PuzzleMiniGame'));
 const RacingMiniGame = lazy(() => import('./minigames/RacingMiniGame'));
 const DuelMiniGame = lazy(() => import('./minigames/DuelMiniGame'));
+const FlappyMiniGame = lazy(() => import('./minigames/FlappyMiniGame'));
 
 const GAME_COMPONENTS = {
   caro: CaroMiniGame,
@@ -15,6 +16,7 @@ const GAME_COMPONENTS = {
   puzzle: PuzzleMiniGame,
   racing: RacingMiniGame,
   duel: DuelMiniGame,
+  flappy: FlappyMiniGame,
 };
 
 function LoadingFallback() {

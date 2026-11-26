@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CHARACTER_SPRITES } from '../data/characterSprites';
+import { createMiniGameBgmController, loadBgmMuted } from '../utils/miniGameAudio';
 
 /**
  * KHUNG GIAO DIỆN DÙNG CHUNG CHO MỌI MINI-GAME KAWAII (TÁCH PAGE ĐỘC LẬP)
  * - Tuân thủ ui-design-guidelines.md: nền kem ấm #FFFDF9, viền #593A47, đổ bóng cứng kawaii.
  * - Tối ưu cả màn hình dọc điện thoại lẫn desktop.
+ * - Tích hợp sẵn nhạc nền riêng từng mini-game (ưu tiên MP3 trong public/audio/minigames/ + fallback synth).
  */
 export default function MiniGameShell({
   game,
@@ -12,19 +14,58 @@ export default function MiniGameShell({
   headerRight = null,
   result = null, // { won: boolean, title: string, summary: string, rewardHearts?: number, rewardStars?: number }
   onRestart = null,
+  maxWidthClass = 'max-w-3xl',
+  fullViewport = false,
   children,
 }) {
   const npcSprite = game?.npcId ? CHARACTER_SPRITES[game.npcId] : null;
+  const [bgmMuted, setBgmMuted] = useState(loadBgmMuted);
+  const bgmRef = useRef(null);
+
+  useEffect(() => {
+    if (!game?.id) return undefined;
+    const ctrl = createMiniGameBgmController(game.id);
+    bgmRef.current = ctrl;
+
+    // Tự động kích hoạt nhạc khi có tương tác đầu tiên (tuân thủ chính sách autoplay trình duyệt)
+    const unlockAndPlay = () => {
+      if (!ctrl.isMuted()) ctrl.tryPlay();
+    };
+    if (!ctrl.isMuted()) {
+      ctrl.tryPlay();
+    }
+    window.addEventListener('pointerdown', unlockAndPlay, { once: true });
+    window.addEventListener('keydown', unlockAndPlay, { once: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', unlockAndPlay);
+      window.removeEventListener('keydown', unlockAndPlay);
+      ctrl.destroy();
+      bgmRef.current = null;
+    };
+  }, [game?.id]);
+
+  const handleToggleBgm = () => {
+    const next = !bgmMuted;
+    setBgmMuted(next);
+    if (bgmRef.current) {
+      bgmRef.current.setMuted(next);
+    }
+  };
 
   const handleReturnTown = () => {
     window.location.href = '/';
   };
 
   return (
-    <div className="min-h-[100dvh] w-full bg-gradient-to-b from-[#FFE4EE] via-[#FFFDF9] to-[#E8F8FF] text-[#593A47] flex flex-col overflow-y-auto select-none">
+    <div
+      className={`w-full bg-gradient-to-b from-[#FFE4EE] via-[#FFFDF9] to-[#E8F8FF] text-[#593A47] flex flex-col select-none ${
+        fullViewport ? 'h-[100dvh] overflow-hidden' : 'min-h-[100dvh] overflow-y-auto'
+      }`}
+    >
       {/* Header Kawaii */}
-      <header className="sticky top-0 z-30 px-3 sm:px-5 py-2.5 bg-[#FFFDF9]/95 backdrop-blur-sm border-b-[3px] border-[#593A47] shadow-[0_4px_0_rgba(89,58,71,0.12)]">
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-2">
+      <header className="sticky top-0 z-30 shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 bg-[#FFFDF9]/95 backdrop-blur-sm border-b-[3px] border-[#593A47] shadow-[0_4px_0_rgba(89,58,71,0.12)]">
+        <div className={`${maxWidthClass} mx-auto flex items-center justify-between gap-2`}>
           <button
             type="button"
             onClick={handleReturnTown}
@@ -55,12 +96,26 @@ export default function MiniGameShell({
           <div className="flex items-center gap-1.5 shrink-0">
             {statusBadge}
             {headerRight}
+            <button
+              type="button"
+              onClick={handleToggleBgm}
+              title={bgmMuted ? 'Bật nhạc nền mini-game' : 'Tắt nhạc nền mini-game'}
+              className={`px-2.5 py-1 rounded-full border-2 border-[#593A47] text-[11px] font-black cursor-pointer transition ${
+                bgmMuted ? 'bg-[#F1F5F9] text-[#64748B]' : 'bg-[#FFF3B0] text-[#593A47]'
+              }`}
+            >
+              {bgmMuted ? '🔇' : '🔊'}
+            </button>
           </div>
         </div>
       </header>
 
       {/* Vùng chơi game chính */}
-      <main className="flex-1 w-full max-w-3xl mx-auto px-3 sm:px-5 py-4 sm:py-6 flex flex-col items-center justify-center">
+      <main
+        className={`flex-1 w-full ${maxWidthClass} mx-auto px-3 sm:px-5 flex flex-col items-center ${
+          fullViewport ? 'min-h-0 py-2 sm:py-3 justify-stretch overflow-hidden' : 'py-4 sm:py-6 justify-center'
+        }`}
+      >
         {children}
       </main>
 

@@ -316,8 +316,9 @@ export default function App() {
       );
     }
 
-    // 2. Kiểm tra lên Level mới
+    // 2. Kiểm tra lên Level mới (+ Thông báo đặc biệt khi mở khóa Map 4: Hẻm Xoáy ở LV.1)
     if (currentLv > prevLevelRef.current) {
+      const prevLv = prevLevelRef.current;
       const lvDef = residentStats.levelInfo.currentDef;
       const unlockedNames = (lvDef.unlockResidents || []).map((cid) => {
         const found = TOWN_CHARACTERS.find((c) => c.id === cid);
@@ -325,17 +326,34 @@ export default function App() {
       });
       prevLevelRef.current = currentLv;
       SafeStorage.setItem('TTSB_SEEN_LEVEL_V1', String(currentLv));
-      enqueueCelebration({
-        type: 'level_up',
-        icon: '⬆️',
-        badgeBg: '#FFF4BD',
-        badgeBorder: '#CA8A04',
-        subtitle: `🎉 Chúc Mừng Lên Cấp LV.${currentLv}!`,
-        title: lvDef.title,
-        description: lvDef.unlockNote,
-        unlockedNames,
-        shareText: `🎉 Mình vừa lên LV.${currentLv} (${lvDef.title}) và mở khóa thêm cư dân mới tại Thị Trấn Sao Bông!`,
-      });
+
+      if (prevLv < 1 && currentLv >= 1) {
+        enqueueCelebration({
+          type: 'level_up',
+          icon: '🌀',
+          badgeBg: '#FFE4EE',
+          badgeBorder: '#E11D48',
+          subtitle: '🎉 MỞ KHÓA BẢN ĐỒ MỚI — MAP 4!',
+          title: '🌀 Hẻm Xoáy Tinh Nghịch Đã Mở Cửa!',
+          description:
+            'Chúc mừng bạn đạt LV.1 (2 Huy Hiệu)! Cổng vào Hẻm Xoáy Tinh Nghịch cùng 4 cư dân siêu quậy và Mini-Game Đại Chiến Lâu Đài Tuyết đã sẵn sàng chờ bạn khám phá!',
+          unlockedNames: ['Nhóc Mây Giông', 'Tí Lốc Xoáy', 'Bé Hố Đen', 'Cậu Sương Mù'],
+          shareText:
+            '🌀 Mình vừa đạt LV.1 và mở khóa Khu Phố Bí Mật Hẻm Xoáy Tinh Nghịch tại Thị Trấn Sao Bông!',
+        });
+      } else {
+        enqueueCelebration({
+          type: 'level_up',
+          icon: '⬆️',
+          badgeBg: '#FFF4BD',
+          badgeBorder: '#CA8A04',
+          subtitle: `🎉 Chúc Mừng Lên Cấp LV.${currentLv}!`,
+          title: lvDef.title,
+          description: lvDef.unlockNote,
+          unlockedNames,
+          shareText: `🎉 Mình vừa lên LV.${currentLv} (${lvDef.title}) tại Thị Trấn Sao Bông!`,
+        });
+      }
     }
 
     // 3. Kiểm tra Skin trang phục mới mở khóa (theo LV > 2 hoặc Huy hiệu Kim Cương / Pha Lê Sao)
