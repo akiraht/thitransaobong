@@ -1,14 +1,15 @@
 import React from 'react';
+import BadgeArt from './BadgeArt';
 
 /**
  * MODAL CHÚC MỪNG & CHIA SẺ MẠNG XÃ HỘI (CELEBRATION & SOCIAL SHARE)
  * Kích hoạt mỗi khi:
- *  - type === 'badge' : Nhận huy hiệu mới (kèm màu bậc Đồng/Bạc/Vàng/Kim Cương/Pha Lê)
+ *  - type === 'badge' : Nhận huy hiệu mới (kèm ảnh WebP & màu bậc Đồng/Bạc/Vàng/Kim Cương/Pha Lê)
  *  - type === 'level_up' : Lên cấp độ mới & mở khóa cư dân mới
  *  - type === 'comic_done' : Đọc xong 1 tập Truyện Tranh Mỗi Ngày
  */
 export default function CelebrationShareModal({
-  event, // { type, icon, badgeBg, badgeBorder, subtitle, title, description, shareText, unlockedNames? }
+  event, // { type, icon, badgeImage?, badgeTierKey?, badgeTitleName?, badgeBg, badgeBorder, subtitle, title, description, shareText, unlockedNames? }
   onShowToast,
   onClose,
 }) {
@@ -84,13 +85,30 @@ export default function CelebrationShareModal({
               backgroundColor: event.badgeBg || '#FFF3B0',
               borderColor: event.badgeBorder || '#593A47',
             }}
-            className="w-20 h-20 rounded-3xl border-[3.5px] shadow-[0_6px_0_#593A47] flex items-center justify-center text-4xl animate-bounce"
+            className="w-24 h-24 rounded-3xl border-[3.5px] shadow-[0_6px_0_#593A47] flex items-center justify-center p-2 animate-bounce"
           >
-            {event.icon || '🎉'}
+            {event.badgeImage ? (
+              <BadgeArt
+                image={event.badgeImage}
+                emoji={event.icon || '🏅'}
+                alt={event.title || 'Huy hiệu mới'}
+                tierKey={event.badgeTierKey || 'gold'}
+                unlocked
+                sizeClass="w-20 h-20"
+                emojiClass="text-4xl"
+              />
+            ) : (
+              <span className="text-4xl leading-none">{event.icon || '🎉'}</span>
+            )}
           </div>
           <span className="px-3 py-0.5 rounded-full bg-[#FFE066] border-2 border-[#593A47] text-[11px] font-black text-[#593A47] uppercase tracking-wider">
             {event.subtitle || '🎉 Chúc Mừng Thành Tích Mới!'}
           </span>
+          {event.badgeTitleName && (
+            <span className="px-3 py-0.5 rounded-full bg-[#FFE4EE] border border-[#593A47] text-xs font-black text-[#593A47]">
+              ✨ Danh hiệu: {event.badgeTitleName}
+            </span>
+          )}
         </div>
 
         {/* Tiêu đề & Mô tả */}

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import CharacterAvatar from './CharacterAvatar';
+import { getMiniGameByNpcId } from '../config/minigamesConfig';
 
 export default function ComicSpeechModal({
   character,
@@ -123,6 +124,20 @@ export default function ComicSpeechModal({
                       : character.skillActionLabel}
                   </span>
                 </button>
+
+                {(() => {
+                  const npcGame = getMiniGameByNpcId(character.id);
+                  if (!npcGame) return null;
+                  return (
+                    <a
+                      href={`/minigame/${npcGame.id}`}
+                      className="kawaii-btn bg-[#FFE066] hover:bg-[#FFD166] text-[#593A47] font-extrabold text-sm sm:text-base px-4 py-2 inline-flex items-center gap-1.5"
+                    >
+                      <span>🎮</span>
+                      <span>{npcGame.shortTitle}</span>
+                    </a>
+                  );
+                })()}
               </div>
             </div>
           </div>

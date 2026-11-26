@@ -97,3 +97,34 @@
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
+
+/* Hiệu ứng hào quang nhẹ cho Bộ Huy Hiệu bậc cao (Vàng / Kim Cương / Pha Lê Sao) */
+@keyframes badgeGlowPulse {
+  0%, 100% {
+    filter: drop-shadow(0 2px 4px rgba(147, 51, 234, 0.35));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(192, 132, 252, 0.85));
+  }
+}
+
+@keyframes badgeDiamondGlow {
+  0%, 100% {
+    filter: drop-shadow(0 2px 4px rgba(2, 132, 199, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.78));
+  }
+}
+
+.badge-aura-gold {
+  filter: drop-shadow(0 2px 4px rgba(202, 138, 4, 0.35));
+}
+
+.badge-aura-diamond {
+  animation: badgeDiamondGlow 2.8s ease-in-out infinite;
+}
+
+.badge-aura-crystal {
+  animation: badgeGlowPulse 2.4s ease-in-out infinite;
+}

@@ -7,6 +7,7 @@ import {
   getUnlockedComicsForLevel,
 } from '../data/dailyComicsData';
 import { submitComicDraftToCloud } from '../services/supabaseClient';
+import { checkCurrentUserBlocked } from '../utils/userAuthService';
 
 /**
  * TỦ TRUYỆN & TRUYỆN TRANH MỖI NGÀY (MỞ TỪ ICON SÁCH TRÊN TOP MENU)
@@ -124,6 +125,11 @@ export default function DailyComicModal({
   const handleGenerateIdea = async (e) => {
     e.preventDefault();
     if (!ideaText.trim() || isGenerating) return;
+    const blockCheck = checkCurrentUserBlocked(residentName);
+    if (blockCheck.isBlocked) {
+      onShowToast?.(`🚫 Bạn không thể gửi câu chuyện: ${blockCheck.reason}`);
+      return;
+    }
     setIsGenerating(true);
     try {
       const newComic = await generateComicFromIdea({

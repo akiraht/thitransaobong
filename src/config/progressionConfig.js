@@ -111,6 +111,10 @@ export const BADGE_CATEGORIES = [
   },
 ];
 
+export function getBadgeImagePath(categoryId, tierKey) {
+  return `/images/badges/${categoryId}_${tierKey}.webp`;
+}
+
 // Danh sách phẳng 30 huy hiệu để tương thích & tra cứu nhanh
 export const ALL_BADGES = BADGE_CATEGORIES.flatMap((cat) =>
   BADGE_TIERS.map((tierObj, idx) => {
@@ -121,6 +125,8 @@ export const ALL_BADGES = BADGE_CATEGORIES.flatMap((cat) =>
       categoryId: cat.id,
       categoryName: cat.name,
       categoryIcon: cat.icon,
+      statKey: cat.statKey,
+      unit: cat.unit,
       tier: tierObj.tier,
       tierKey: tierObj.key,
       tierName: tierObj.name,
@@ -129,7 +135,9 @@ export const ALL_BADGES = BADGE_CATEGORIES.flatMap((cat) =>
       tierBorder: tierObj.border,
       tierText: tierObj.text,
       icon: tierObj.emoji,
+      image: getBadgeImagePath(cat.id, tierObj.key),
       name: `${cat.name} (${tierObj.name})`,
+      titleName: titleText,
       title: `${tierObj.emoji} ${titleText}`,
       requirement: req,
       desc: `Đạt mốc ${req} ${cat.unit}`,
@@ -137,6 +145,11 @@ export const ALL_BADGES = BADGE_CATEGORIES.flatMap((cat) =>
     };
   })
 );
+
+export function getBadgeById(badgeId) {
+  if (!badgeId) return null;
+  return ALL_BADGES.find((b) => b.id === badgeId) || null;
+}
 
 /**
  * HỆ THỐNG CẤP ĐỘ NHÂN VẬT (LV.0 → LV.5) & MỞ KHÓA CƯ DÂN TỪ TỪ
@@ -230,4 +243,256 @@ export function getResidentUnlockLevel(residentId) {
     if (def.unlockResidents.includes(residentId)) return def.level;
   }
   return 0;
+}
+
+/**
+ * HỆ THỐNG TỦ ĐỒ 18 SKIN NHÂN VẬT NGƯỜI CHƠI (BÉ SAO BÔNG)
+ * - 3 skin mặc định mở sẵn
+ * - 3 skin mở khóa theo Cấp Độ (> LV.2: LV.3, LV.4, LV.5)
+ * - 12 skin mở khóa theo Huy Hiệu bậc Kim Cương (diamond) & Pha Lê Sao (crystal)
+ */
+export const PLAYER_SKINS = [
+  // --- NHÓM 1: MẶC ĐỊNH (3) ---
+  {
+    id: 'user_character',
+    name: 'Bé Sao Bông',
+    desc: 'Nguyên bản đáng yêu',
+    image: '/images/player/user_character.webp',
+    group: 'default',
+    unlockType: 'free',
+    unlockShort: 'Mặc định',
+    unlockLabel: 'Mở sẵn cho mọi cư dân',
+  },
+  {
+    id: 'user_hardworking',
+    name: 'Bé Chăm Chỉ',
+    desc: 'Học tập & cần mẫn',
+    image: '/images/player/user_hardworking.webp',
+    group: 'default',
+    unlockType: 'free',
+    unlockShort: 'Mặc định',
+    unlockLabel: 'Mở sẵn cho mọi cư dân',
+  },
+  {
+    id: 'user_happy',
+    name: 'Bé Vui Tươi',
+    desc: 'Cười tít rạng rỡ',
+    image: '/images/player/user_happy.webp',
+    group: 'default',
+    unlockType: 'free',
+    unlockShort: 'Mặc định',
+    unlockLabel: 'Mở sẵn cho mọi cư dân',
+  },
+
+  // --- NHÓM 2: MỞ KHÓA THEO CẤP ĐỘ (LV > 2: LV.3, LV.4, LV.5) ---
+  {
+    id: 'skin_lv3_star_explorer',
+    name: 'Nhà Thám Hiểm Sao',
+    desc: 'Mũ nồi sao trời & đèn lồng đêm',
+    image: '/images/player/skin_lv3_star_explorer.webp',
+    group: 'level',
+    unlockType: 'level',
+    requiredLevel: 3,
+    tierKey: 'gold',
+    unlockShort: 'LV.3',
+    unlockLabel: 'Đạt Cấp Độ LV.3 (9 Huy hiệu)',
+  },
+  {
+    id: 'skin_lv4_star_knight',
+    name: 'Hiệp Sĩ Sao Bông',
+    desc: 'Áo choàng hiệp sĩ & khiên ngôi sao',
+    image: '/images/player/skin_lv4_star_knight.webp',
+    group: 'level',
+    unlockType: 'level',
+    requiredLevel: 4,
+    tierKey: 'diamond',
+    unlockShort: 'LV.4',
+    unlockLabel: 'Đạt Cấp Độ LV.4 (14 Huy hiệu)',
+  },
+  {
+    id: 'skin_lv5_crystal_ambassador',
+    name: 'Đại Sứ Pha Lê',
+    desc: 'Vương miện pha lê & quyền trượng sao',
+    image: '/images/player/skin_lv5_crystal_ambassador.webp',
+    group: 'level',
+    unlockType: 'level',
+    requiredLevel: 5,
+    tierKey: 'crystal',
+    unlockShort: 'LV.5',
+    unlockLabel: 'Đạt Cấp Độ LV.5 (20 Huy hiệu)',
+  },
+
+  // --- NHÓM 3: MỞ KHÓA THEO HUY HIỆU KIM CƯƠNG & PHA LÊ SAO (12) ---
+  {
+    id: 'skin_quests_diamond',
+    name: 'Hướng Đạo Sao',
+    desc: 'Dải băng hướng đạo & cờ hiệu nhiệm vụ',
+    image: '/images/player/skin_quests_diamond.webp',
+    group: 'badge',
+    unlockType: 'badge',
+    requiredBadgeId: 'quests_diamond',
+    categoryId: 'quests',
+    tierKey: 'diamond',
+    unlockShort: '💎 Nhiệm Vụ',
+    unlockLabel: 'Đạt Huy hiệu Hành Trình Nhiệm Vụ (Kim Cương)',
+  },
+  {
+    id: 'skin_quests_crystal',
+    name: 'Cộng Sự Thị Trưởng',
+    desc: 'Mũ chóp mini & cuộn sắc lệnh sao',
+    image: '/images/player/skin_quests_crystal.webp',
+    group: 'badge',
+    unlockType: 'badge',
+    requiredBadgeId: 'quests_crystal',
+    categoryId: 'quests',
+    tierKey: 'crystal',
+    unlockShort: '🔮 Nhiệm Vụ',
+    unlockLabel: 'Đạt Huy hiệu Hành Trình Nhiệm Vụ (Pha Lê Sao)',
+  },
+  {
+    id: 'skin_streak_diamond',
+    name: 'Ngọn Lửa Bền Bỉ',
+    desc: 'Áo choàng tai sao & đèn lồng ấm áp',
+    image: '/images/player/skin_streak_diamond.webp',
+    group: 'badge',
+    unlockType: 'badge',
+    requiredBadgeId: 'streak_diamond',
+    categoryId: 'streak',
+    tierKey: 'diamond',
+    unlockShort: '💎 Chuỗi Ngày',
+    unlockLabel: 'Đạt Huy hiệu Chuỗi Chuyên Cần (Kim Cương)',
+  },
+  {
+    id: 'skin_streak_crystal',
+    name: 'Đại Sứ Bình Minh',
+    desc: 'Áo choàng bình minh & vòng lửa sao',
+    image: '/images/player/skin_streak_crystal.webp',
+    group: 'badge',
+    unlockType: 'badge',
+    requiredBadgeId: 'streak_crystal',
+    categoryId: 'streak',
+    tierKey: 'crystal',
+    unlockShort: '🔮 Chuỗi Ngày',
+    unlockLabel: 'Đạt Huy hiệu Chuỗi Chuyên Cần (Pha Lê Sao)',
+  },
+  {
+    id: 'skin_comics_diamond',
+    name: 'Thủ Thư Sao Bông',
+    desc: 'Mũ beret nâu, kính vàng & sách truyện',
+    image: '/images/player/skin_comics_diamond.webp',
+    group: 'badge',
+    unlockType: 'badge',
+    requiredBadgeId: 'comics_diamond',
+    categoryId: 'comics',
+    tierKey: 'diamond',
+    unlockShort: '💎 Truyện Tranh',
+    unlockLabel: 'Đạt Huy hiệu Mọt Sách Truyện Tranh (Kim Cương)',
+  },
+  {
+    id: 'skin_comics_crystal',
+    name: 'Học Giả Phép Thuật',
+    desc: 'Mũ phù thủy sao & trang truyện bay lượn',
+    image: '/images/player/skin_comics_crystal.webp',
+    group: 'badge',
+    unlockType: 'badge',
+    requiredBadgeId: 'comics_crystal',
+    categoryId: 'comics',
+    tierKey: 'crystal',
+    unlockShort: '🔮 Truyện Tranh',
+    unlockLabel: 'Đạt Huy hiệu Mọt Sách Truyện Tranh (Pha Lê Sao)',
+  },
+  {
+    id: 'skin_hearts_diamond',
+    name: 'Thiên Thần Ấm Áp',
+    desc: 'Cánh bông thiên thần & trái tim pha lê',
+    image: '/images/player/skin_hearts_diamond.webp',
+    group: 'badge',
+    unlockType: 'badge',
+    requiredBadgeId: 'hearts_diamond',
+    categoryId: 'hearts',
+    tierKey: 'diamond',
+    unlockShort: '💎 Trái Tim',
+    unlockLabel: 'Đạt Huy hiệu Trái Tim Ấm Áp (Kim Cương)',
+  },
+  {
+    id: 'skin_hearts_crystal',
+    name: 'Cupid Ngôi Sao',
+    desc: 'Hào quang trái tim & đũa phép yêu thương',
+    image: '/images/player/skin_hearts_crystal.webp',
+    group: 'badge',
+    unlockType: 'badge',
+    requiredBadgeId: 'hearts_crystal',
+    categoryId: 'hearts',
+    tierKey: 'crystal',
+    unlockShort: '🔮 Trái Tim',
+    unlockLabel: 'Đạt Huy hiệu Trái Tim Ấm Áp (Pha Lê Sao)',
+  },
+  {
+    id: 'skin_wishes_diamond',
+    name: 'Bưu Tá Bầu Trời',
+    desc: 'Mũ ca-lô cánh nhỏ & túi thư sao',
+    image: '/images/player/skin_wishes_diamond.webp',
+    group: 'badge',
+    unlockType: 'badge',
+    requiredBadgeId: 'wishes_diamond',
+    categoryId: 'wishes',
+    tierKey: 'diamond',
+    unlockShort: '💎 Lời Chúc',
+    unlockLabel: 'Đạt Huy hiệu Sứ Giả Bầu Trời (Kim Cương)',
+  },
+  {
+    id: 'skin_wishes_crystal',
+    name: 'Người Giữ Ngân Hà',
+    desc: 'Áo choàng ngân hà & lọ sao băng sáng',
+    image: '/images/player/skin_wishes_crystal.webp',
+    group: 'badge',
+    unlockType: 'badge',
+    requiredBadgeId: 'wishes_crystal',
+    categoryId: 'wishes',
+    tierKey: 'crystal',
+    unlockShort: '🔮 Lời Chúc',
+    unlockLabel: 'Đạt Huy hiệu Sứ Giả Bầu Trời (Pha Lê Sao)',
+  },
+  {
+    id: 'skin_explorer_diamond',
+    name: 'Phi Công Thám Hiểm',
+    desc: 'Kính phi công & la bàn ngôi sao',
+    image: '/images/player/skin_explorer_diamond.webp',
+    group: 'badge',
+    unlockType: 'badge',
+    requiredBadgeId: 'explorer_diamond',
+    categoryId: 'explorer',
+    tierKey: 'diamond',
+    unlockShort: '💎 Thám Hiểm',
+    unlockLabel: 'Đạt Huy hiệu Thám Hiểm Thị Trấn (Kim Cương)',
+  },
+  {
+    id: 'skin_explorer_crystal',
+    name: 'Thuyền Trưởng Bầu Trời',
+    desc: 'Mũ thuyền trưởng khinh khí cầu & ống nhòm',
+    image: '/images/player/skin_explorer_crystal.webp',
+    group: 'badge',
+    unlockType: 'badge',
+    requiredBadgeId: 'explorer_crystal',
+    categoryId: 'explorer',
+    tierKey: 'crystal',
+    unlockShort: '🔮 Thám Hiểm',
+    unlockLabel: 'Đạt Huy hiệu Thám Hiểm Thị Trấn (Pha Lê Sao)',
+  },
+];
+
+export function isSkinUnlocked(skin, level = 0, unlockedBadgeIdSet = new Set()) {
+  if (!skin) return false;
+  if (skin.unlockType === 'free') return true;
+  if (skin.unlockType === 'level') return level >= (skin.requiredLevel || 0);
+  if (skin.unlockType === 'badge') return unlockedBadgeIdSet.has(skin.requiredBadgeId);
+  return false;
+}
+
+export function getUnlockedSkins(level = 0, unlockedBadgeIdSet = new Set()) {
+  return PLAYER_SKINS.filter((skin) => isSkinUnlocked(skin, level, unlockedBadgeIdSet));
+}
+
+export function getPlayerSkinById(skinId) {
+  return PLAYER_SKINS.find((s) => s.id === skinId) || PLAYER_SKINS[0];
 }

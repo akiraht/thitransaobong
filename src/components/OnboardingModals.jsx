@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MoodSmileSvg from './MoodSmileSvg';
 import CharacterAvatar from './CharacterAvatar';
+import ResidentAuthPanel from './ResidentAuthPanel';
 import { MOOD_CONFIG } from '../config/constants';
 
 // Hiệu ứng Pháo Hoa Ngôi Sao & Kim Tuyến Pastel bay lấp lánh tạo cảm giác hào hứng
@@ -41,20 +42,24 @@ export default function OnboardingModals({
   activeLetter,
   likedWishIds,
   savedStars,
+  isLoggedIn,
   onSelectMood,
   onProceedToJarModal,
   onDrawStarFromJarModal,
   onCloseFlowAndUnlockTown,
+  onAuthSuccess,
   onLikeLetter,
   onToggleSaveMemory,
   onCopyQuote
 }) {
   const [burstKey, setBurstKey] = useState(0);
   const [isChargingJar, setIsChargingJar] = useState(false);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
   useEffect(() => {
     setBurstKey((prev) => prev + 1);
     setIsChargingJar(false);
+    if (step !== 'letter') setShowAuthPrompt(false);
   }, [step, selectedMood]);
 
   if (!step) return null;
@@ -309,7 +314,7 @@ export default function OnboardingModals({
       >
         <MagicalCelebrationParticles key={'letter-particles'} count={26} />
 
-        <div className="letter-paper w-full max-w-lg p-6 sm:p-8 relative letter-unfold-enter my-auto">
+        <div className="letter-paper w-full max-w-2xl p-6 sm:p-8 relative letter-unfold-enter my-auto">
           {/* Tem Sáp Ngôi Sao Phát Sáng Trên Đỉnh Bức Thư */}
           <div className="absolute -top-6 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#FFE066] border-[3px] border-[#593A47] shadow-[0_4px_0_#593A47] font-extrabold text-xs sm:text-sm text-[#593A47] flex items-center gap-1.5 whitespace-nowrap">
             <span>🌟</span>
@@ -368,50 +373,102 @@ export default function OnboardingModals({
             </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-2.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onLikeLetter(activeLetter)}
-                className={`kawaii-btn font-extrabold text-sm sm:text-base px-3.5 py-2 flex items-center gap-1.5 ${
-                  (likedWishIds || []).includes(activeLetter.id)
-                    ? 'bg-[#FFE2EC] text-[#D9386A]'
-                    : 'bg-white hover:bg-[#FFE4EE] text-[#593A47]'
-                }`}
-              >
-                <span>💖</span>
-                <span>Thả tim ({Number(activeLetter.likes) || 0})</span>
-              </button>
+          <div className="mt-6 flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => onLikeLetter(activeLetter)}
+              className={`kawaii-btn font-extrabold text-sm sm:text-base px-3.5 py-2 flex items-center gap-1.5 ${
+                (likedWishIds || []).includes(activeLetter.id)
+                  ? 'bg-[#FFE2EC] text-[#D9386A]'
+                  : 'bg-white hover:bg-[#FFE4EE] text-[#593A47]'
+              }`}
+            >
+              <span>Thả tim ({Number(activeLetter.likes) || 0})</span><span>💖</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => onToggleSaveMemory(activeLetter)}
-                className="kawaii-btn bg-[#FFF4BD] hover:bg-[#FFE885] text-[#593A47] font-extrabold text-sm sm:text-base px-3.5 py-2"
-              >
-                {(savedStars || []).some((st) => st.id === activeLetter.id)
-                  ? '🏺 Đã lưu Ký Ức'
-                  : '🏺 Lưu vào Ký Ức'}
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onCopyQuote}
-                className="kawaii-btn bg-[#E2F9F0] hover:bg-[#C7F2E0] text-[#593A47] font-extrabold text-sm sm:text-base px-3.5 py-2"
-              >
-                📋 Sao chép lời chúc
-              </button>
-              <button
-                type="button"
-                onClick={onCloseFlowAndUnlockTown}
-                className="kawaii-btn shimmer-btn bg-[#FF85A9] hover:bg-[#FF6E99] text-[#593A47] font-extrabold text-sm sm:text-base px-5 py-2"
-              >
-                Cất vào tim 💖
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => onToggleSaveMemory(activeLetter)}
+              className="kawaii-btn bg-[#FFF4BD] hover:bg-[#FFE885] text-[#593A47] font-extrabold text-sm sm:text-base px-3.5 py-2"
+            >
+              {(savedStars || []).some((st) => st.id === activeLetter.id)
+                ? 'Đã lưu Ký Ức'
+                : 'Lưu vào Ký Ức'}
+            </button>
+            <button
+              type="button"
+              onClick={onCopyQuote}
+              className="kawaii-btn bg-[#E2F9F0] hover:bg-[#C7F2E0] text-[#593A47] font-extrabold text-sm sm:text-base px-3.5 py-2"
+            >
+              Sao chép lời chúc
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (isLoggedIn) {
+                  onCloseFlowAndUnlockTown();
+                } else {
+                  setShowAuthPrompt(true);
+                }
+              }}
+              className="kawaii-btn shimmer-btn bg-[#FF85A9] hover:bg-[#FF6E99] text-[#593A47] font-extrabold text-sm sm:text-base px-5 py-2"
+            >
+              Lưu giữ
+            </button>
           </div>
         </div>
+
+        {/* POPUP ĐĂNG NHẬP / ĐĂNG KÝ KHI BẤM "LƯU GIỮ" MÀ CHƯA ĐĂNG NHẬP */}
+        {showAuthPrompt && !isLoggedIn && (
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowAuthPrompt(false);
+            }}
+            className="fixed inset-0 z-[1050] bg-[#593A47]/65 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+          >
+            <div className="kawaii-card w-full max-w-lg p-5 sm:p-6 bg-[#FFFDF9] relative pop-in my-auto space-y-3">
+              <button
+                type="button"
+                onClick={() => setShowAuthPrompt(false)}
+                aria-label="Đóng đăng nhập"
+                className="kawaii-btn w-9 h-9 bg-[#FFE4EE] text-[#593A47] font-black text-sm flex items-center justify-center absolute -top-3.5 -right-3"
+              >
+                ✕
+              </button>
+              <div className="flex items-center gap-2.5">
+                <span className="w-10 h-10 rounded-2xl bg-[#FFF3B0] border-2 border-[#593A47] flex items-center justify-center text-xl shadow-[0_3px_0_#593A47]">
+                  🏡
+                </span>
+                <div>
+                  <h3 className="font-black text-base text-[#593A47] leading-tight">
+                    Lưu giữ bức thư vào Ngôi Nhà của bạn ✨
+                  </h3>
+                  <p className="text-xs font-bold text-[#7D5867]">
+                    Đăng nhập hoặc đăng ký cư dân để giữ trọn kỷ niệm &amp; nhận huy hiệu!
+                  </p>
+                </div>
+              </div>
+
+              <ResidentAuthPanel
+                initialMode="login"
+                showBenefits={false}
+                guestActionLabel="Hoặc tiếp tục dạo chơi với tư cách Khách (chưa đăng nhập) →"
+                onGuestAction={() => {
+                  setShowAuthPrompt(false);
+                  onCloseFlowAndUnlockTown();
+                }}
+                onAuthSuccess={(user, mode) => {
+                  setShowAuthPrompt(false);
+                  onAuthSuccess?.(user, mode);
+                  if (activeLetter && !(savedStars || []).some((st) => st.id === activeLetter.id)) {
+                    onToggleSaveMemory?.(activeLetter);
+                  }
+                  onCloseFlowAndUnlockTown();
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     );
   }

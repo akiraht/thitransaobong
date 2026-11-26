@@ -128,16 +128,28 @@ export function saveAdminCustomQuests(list) {
   SafeStorage.setItem(ADMIN_CUSTOM_QUESTS_KEY, JSON.stringify(Array.isArray(list) ? list : []));
 }
 
+import {
+  loadUserAccounts,
+  loadBlockedIps,
+  loadBlockedDevices,
+} from './userAuthService';
+
 export async function exportAdminBackupJson(sheetWishes = []) {
   const comics = await getAllAdminComics();
   const customQuests = loadAdminCustomQuests();
+  const users = loadUserAccounts().map(({ passwordHash, salt, ...safeUser }) => safeUser);
+  const blockedIps = loadBlockedIps();
+  const blockedDevices = loadBlockedDevices();
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
-      version: 1,
+      version: 2,
       comics,
       customQuests,
       wishes: sheetWishes,
+      users,
+      blockedIps,
+      blockedDevices,
     },
     null,
     2

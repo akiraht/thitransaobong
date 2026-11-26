@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { TOWN_CHARACTERS, CHARACTER_SPRITES } from '../data/characterSprites';
+import { getPlayerSkinById } from '../config/progressionConfig';
 import { getTownObstacles, getHillLandmarks } from '../data/townHousesConfig';
 
 // Danh sách toạ độ tương tác và hộp va chạm vật lý
@@ -153,11 +154,11 @@ export default function CozyWalkAvatar({
   const posRef = useRef(playerPos);
   posRef.current = playerPos;
 
-  // Lựa chọn Avatar của người chơi
+  // Lựa chọn Avatar của người chơi (hỗ trợ đủ 18 skin + chế độ Bé Ngái Ngủ 22h-04h)
   const activeUserAvatar = useMemo(() => {
     const currentHour = new Date().getHours();
     const isNightSleepHours = currentHour >= 22 || currentHour < 4;
-    if (isNightSleepHours && CHARACTER_SPRITES.user_sleepy) {
+    if (isNightSleepHours && !resident?.disableNightSleepy && CHARACTER_SPRITES.user_sleepy) {
       return {
         key: 'user_sleepy',
         src: CHARACTER_SPRITES.user_sleepy,
@@ -166,18 +167,14 @@ export default function CozyWalkAvatar({
       };
     }
     const choiceKey = resident?.avatarChoice || 'user_character';
+    const skinMeta = getPlayerSkinById(choiceKey);
     return {
-      key: choiceKey,
-      src: CHARACTER_SPRITES[choiceKey] || CHARACTER_SPRITES.user_character,
-      name:
-        choiceKey === 'user_hardworking'
-          ? 'Bé Chăm Chỉ'
-          : choiceKey === 'user_happy'
-          ? 'Bé Vui Tươi'
-          : 'Bé Sao Bông',
+      key: skinMeta.id,
+      src: CHARACTER_SPRITES[skinMeta.id] || skinMeta.image || CHARACTER_SPRITES.user_character,
+      name: skinMeta.name,
       isNightAuto: false
     };
-  }, [resident?.avatarChoice]);
+  }, [resident?.avatarChoice, resident?.disableNightSleepy]);
 
   const keysDownRef = useRef(new Set());
   const targetClickPosRef = useRef(null);

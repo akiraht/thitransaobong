@@ -43,11 +43,13 @@ CREATE TABLE IF NOT EXISTS public.daily_progress (
   PRIMARY KEY (user_id, date_key)
 );
 
--- 4. Kho Truyện Tranh Mỗi Ngày & Hàng đợi ý tưởng
+-- 4. Kho Truyện Tranh Mỗi Ngày & Truyện Ảnh từ Admin
 CREATE TABLE IF NOT EXISTS public.comics (
   id TEXT PRIMARY KEY,
   publish_date DATE,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'archived')),
+  status TEXT NOT NULL DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'archived')),
+  min_level INTEGER NOT NULL DEFAULT 0,
+  pin_as_today BOOLEAN NOT NULL DEFAULT FALSE,
   title TEXT NOT NULL,
   author TEXT NOT NULL DEFAULT 'Ban Biên Tập Thị Trấn',
   moral TEXT NOT NULL DEFAULT '',
@@ -57,11 +59,29 @@ CREATE TABLE IF NOT EXISTS public.comics (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 5. Nhiệm Vụ Tùy Chỉnh từ Trang Admin (3 loại: quiz / collect / visit)
+CREATE TABLE IF NOT EXISTS public.custom_quests (
+  id TEXT PRIMARY KEY,
+  quest_type TEXT NOT NULL DEFAULT 'visit' CHECK (quest_type IN ('quiz', 'collect', 'visit')),
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  title TEXT NOT NULL,
+  npc_id TEXT NOT NULL DEFAULT 'star',
+  npc_name TEXT NOT NULL DEFAULT 'Thị Trấn Sao Bông',
+  icon TEXT NOT NULL DEFAULT '🎯',
+  map_id TEXT NOT NULL DEFAULT 'map_hope_hill',
+  map_name TEXT NOT NULL DEFAULT 'Đỉnh Đồi Hy Vọng',
+  action_type TEXT NOT NULL,
+  reward_stars INTEGER NOT NULL DEFAULT 20,
+  payload_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Bật Row Level Security (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wishes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.daily_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.custom_quests ENABLE ROW LEVEL SECURITY;
 
 -- Policies an toàn cơ bản
 CREATE POLICY "Users read own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
@@ -73,3 +93,4 @@ CREATE POLICY "Authenticated inserts wish" ON public.wishes FOR INSERT WITH CHEC
 CREATE POLICY "Users manage own daily progress" ON public.daily_progress FOR ALL USING (auth.uid() = user_id);
 
 CREATE POLICY "Anyone reads approved comics" ON public.comics FOR SELECT USING (status = 'approved');
+CREATE POLICY "Anyone reads enabled quests" ON public.custom_quests FOR SELECT USING (enabled = TRUE);

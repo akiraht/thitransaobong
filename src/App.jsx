@@ -32,6 +32,7 @@ import {
   ALL_BADGES,
   getLevelInfoFromBadgeCount,
   getResidentUnlockLevel,
+  getUnlockedSkins,
 } from './config/progressionConfig';
 import { TOWN_CHARACTERS } from './data/characterSprites';
 import {
@@ -52,6 +53,13 @@ import {
   saveCollectedComics,
 } from './data/dailyComicsData';
 import { getAllAdminComics } from './utils/adminDataStore';
+import {
+  fetchClientIp,
+  updateUserProfileInfo,
+  checkCurrentUserBlocked,
+  ensureSeedTestAccounts,
+} from './utils/userAuthService';
+import { consumePendingMiniGameRewards } from './config/minigamesConfig';
 
 export default function App() {
   const quotesByMood = useMemo(() => buildQuotesDatabase(), []);
@@ -175,7 +183,11 @@ export default function App() {
     });
     const myWishesList = Array.from(mergedMap.values());
     const totalLikesReceived = myWishesList.reduce((sum, w) => sum + (Number(w.likes) || 0), 0);
-    const stats = {
+    const preset = resident.isLoggedIn ? resident.testPresetStats : null;
+    const isBasicPreset = resident.isLoggedIn && resident.testPresetType === 'basic';
+    const isVipPreset = resident.isLoggedIn && resident.testPresetType === 'vip_full';
+
+    const rawStats = {
       wishesSent: myWishesList.length,
       likesReceived: totalLikesReceived + (Number(resident.townHearts) || 0),
       savedCount: (resident.savedStars || []).length,
@@ -186,40 +198,81 @@ export default function App() {
       exploredActionsCount: Number(resident.exploredActionsCount) || 0,
       myWishesList
     };
+
+    const stats = isVipPreset && preset
+      ? {
+          ...rawStats,
+          totalQuestsCompleted: Math.max(rawStats.totalQuestsCompleted, preset.totalQuestsCompleted),
+          dailyStreak: Math.max(rawStats.dailyStreak, preset.dailyStreak),
+          collectedComicsCount: Math.max(rawStats.collectedComicsCount, preset.collectedComicsCount),
+          likesReceived: Math.max(rawStats.likesReceived, preset.likesReceived),
+          wishesAndMemories: Math.max(rawStats.wishesAndMemories, preset.wishesAndMemories),
+          exploredActionsCount: Math.max(rawStats.exploredActionsCount, preset.exploredActionsCount),
+        }
+      : isBasicPreset
+        ? {
+            ...rawStats,
+            totalQuestsCompleted: 0,
+            dailyStreak: 0,
+            collectedComicsCount: 0,
+            likesReceived: 0,
+            wishesAndMemories: 0,
+            exploredActionsCount: 0,
+          }
+        : rawStats;
     const unlockedBadges = ALL_BADGES.filter((b) => b.check(stats));
+    const unlockedBadgeIdSet = new Set(unlockedBadges.map((b) => b.id));
     const levelInfo = getLevelInfoFromBadgeCount(unlockedBadges.length);
-    const currentBadge = unlockedBadges[unlockedBadges.length - 1] || {
+    const unlockedSkins = getUnlockedSkins(levelInfo.level, unlockedBadgeIdSet);
+    const pinnedBadge = resident.pinnedBadgeId
+      ? unlockedBadges.find((b) => b.id === resident.pinnedBadgeId)
+      : null;
+    const highestTierBadge = unlockedBadges.reduce(
+      (best, b) => (!best || b.tier >= best.tier ? b : best),
+      null
+    );
+    const currentBadge = pinnedBadge || highestTierBadge || {
       icon: '🌱',
       title: levelInfo.title,
     };
     return {
       ...stats,
       unlockedBadges,
+      unlockedSkins,
       levelInfo,
       currentBadge,
       currentTitle: levelInfo.title
     };
   }, [resident, appState.sheetWishes, dailyQuestsState, collectedComics]);
 
-  // Theo dõi mở khóa Huy hiệu mới & Lên Cấp (Level Up) -> Bật Modal Chúc Mừng + Nút Share MXH
+  // Theo dõi mở khóa Huy hiệu mới, Skin mới & Lên Cấp (Level Up) -> Bật Modal Chúc Mừng + Nút Share MXH
   const progressionInitRef = useRef(false);
   const prevUnlockedIdsRef = useRef(new Set());
+  const prevUnlockedSkinIdsRef = useRef(new Set());
   const prevLevelRef = useRef(0);
 
   useEffect(() => {
     const unlockedIds = residentStats.unlockedBadges.map((b) => b.id);
+    const unlockedSkinIds = (residentStats.unlockedSkins || []).map((s) => s.id);
     const currentLv = residentStats.levelInfo.level;
 
     if (!progressionInitRef.current) {
       // Khởi tạo từ SafeStorage để không bắn lại modal cũ khi reload trang
       try {
         const storedSeen = JSON.parse(SafeStorage.getItem('TTSB_SEEN_BADGES_V1') || 'null');
+        const storedSeenSkins = JSON.parse(SafeStorage.getItem('TTSB_SEEN_SKINS_V1') || 'null');
         const storedLv = SafeStorage.getItem('TTSB_SEEN_LEVEL_V1');
         if (Array.isArray(storedSeen)) {
           prevUnlockedIdsRef.current = new Set(storedSeen);
         } else {
           prevUnlockedIdsRef.current = new Set(unlockedIds);
           SafeStorage.setItem('TTSB_SEEN_BADGES_V1', JSON.stringify(unlockedIds));
+        }
+        if (Array.isArray(storedSeenSkins)) {
+          prevUnlockedSkinIdsRef.current = new Set(storedSeenSkins);
+        } else {
+          prevUnlockedSkinIdsRef.current = new Set(unlockedSkinIds);
+          SafeStorage.setItem('TTSB_SEEN_SKINS_V1', JSON.stringify(unlockedSkinIds));
         }
         if (storedLv !== null) {
           prevLevelRef.current = Number(storedLv) || 0;
@@ -229,6 +282,7 @@ export default function App() {
         }
       } catch {
         prevUnlockedIdsRef.current = new Set(unlockedIds);
+        prevUnlockedSkinIdsRef.current = new Set(unlockedSkinIds);
         prevLevelRef.current = currentLv;
       }
       progressionInitRef.current = true;
@@ -245,12 +299,15 @@ export default function App() {
         enqueueCelebration({
           type: 'badge',
           icon: b.tierEmoji,
+          badgeImage: b.image,
+          badgeTierKey: b.tierKey,
+          badgeTitleName: b.titleName,
           badgeBg: b.tierBg,
           badgeBorder: b.tierBorder,
           subtitle: `🏅 Huy Hiệu Bậc ${b.tierName} Mới!`,
           title: b.name,
           description: `${b.desc} — Đã đạt ${residentStats.unlockedBadges.length}/${ALL_BADGES.length} huy hiệu!`,
-          shareText: `🏅 Mình vừa mở khóa huy hiệu "${b.name}" (${b.tierEmoji} bậc ${b.tierName}) tại Thị Trấn Sao Bông!`,
+          shareText: `🏅 Mình vừa mở khóa huy hiệu "${b.name}" (${b.tierEmoji} ${b.titleName}) tại Thị Trấn Sao Bông!`,
         });
       });
       SafeStorage.setItem(
@@ -280,7 +337,34 @@ export default function App() {
         shareText: `🎉 Mình vừa lên LV.${currentLv} (${lvDef.title}) và mở khóa thêm cư dân mới tại Thị Trấn Sao Bông!`,
       });
     }
-  }, [residentStats.unlockedBadges, residentStats.levelInfo]);
+
+    // 3. Kiểm tra Skin trang phục mới mở khóa (theo LV > 2 hoặc Huy hiệu Kim Cương / Pha Lê Sao)
+    const newlyUnlockedSkins = (residentStats.unlockedSkins || []).filter(
+      (s) => s.unlockType !== 'free' && !prevUnlockedSkinIdsRef.current.has(s.id)
+    );
+    if (newlyUnlockedSkins.length > 0) {
+      newlyUnlockedSkins.forEach((s) => {
+        prevUnlockedSkinIdsRef.current.add(s.id);
+        enqueueCelebration({
+          type: 'skin_unlock',
+          icon: '🎭',
+          badgeImage: s.image,
+          badgeTierKey: s.tierKey || 'gold',
+          badgeTitleName: s.unlockShort,
+          badgeBg: s.tierKey === 'crystal' ? '#F3E8FF' : s.tierKey === 'diamond' ? '#E0F2FE' : '#FEF9C3',
+          badgeBorder: s.tierKey === 'crystal' ? '#9333EA' : s.tierKey === 'diamond' ? '#0284C7' : '#CA8A04',
+          subtitle: '🎭 Mở Khóa Trang Phục Skin Mới!',
+          title: s.name,
+          description: `${s.desc} — Về Ngôi Nhà Của Bạn → Tủ Đồ Skin để mặc thử ngay nhé!`,
+          shareText: `🎭 Mình vừa mở khóa trang phục "${s.name}" cho Bé Sao Bông tại Thị Trấn Sao Bông! ✨`,
+        });
+      });
+      SafeStorage.setItem(
+        'TTSB_SEEN_SKINS_V1',
+        JSON.stringify(Array.from(prevUnlockedSkinIdsRef.current))
+      );
+    }
+  }, [residentStats.unlockedBadges, residentStats.unlockedSkins, residentStats.levelInfo]);
 
   // Đồng bộ danh sách nhiệm vụ ngày với cư dân đã mở khóa
   useEffect(() => {
@@ -915,6 +999,67 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    fetchClientIp().catch(() => {});
+    ensureSeedTestAccounts().catch(() => {});
+
+    // Nhận phần thưởng Mini-Game nếu người chơi vừa thắng và quay về thị trấn
+    const pendingRewards = consumePendingMiniGameRewards();
+    if (pendingRewards.length > 0) {
+      const totalHearts = pendingRewards.reduce((sum, r) => sum + (Number(r.hearts) || 0), 0);
+      const totalStars = pendingRewards.reduce((sum, r) => sum + (Number(r.stars) || 0), 0);
+      const lastGame = pendingRewards[pendingRewards.length - 1];
+      updateResident((prev) => ({
+        ...prev,
+        townHearts: (Number(prev.townHearts) || 0) + totalHearts,
+        exploredActionsCount: (Number(prev.exploredActionsCount) || 0) + pendingRewards.length,
+      }));
+      showToast(
+        `🎮 Thưởng Mini-Game "${lastGame.gameTitle}": +${totalHearts} 💖 Tim & +${totalStars} ⭐ Sao!`
+      );
+    }
+  }, []);
+
+  const handleAuthSuccess = (user, mode) => {
+    if (!user) return;
+    updateResident((prev) => ({
+      ...prev,
+      isLoggedIn: true,
+      userId: user.id,
+      username: user.username,
+      nickname: user.username,
+      email: user.email || '',
+      phone: user.phone || '',
+      birthday: user.birthday || '',
+      testPresetType: user.presetType || null,
+      testPresetStats: user.presetStats || null,
+      avatarChoice:
+        user.presetType === 'basic' ? 'user_character' : prev.avatarChoice || 'user_character',
+    }));
+    setNickname(user.username);
+    showToast(
+      mode === 'register'
+        ? `🎉 Chào mừng cư dân mới "${user.username}"! Bảng tên Ngôi Nhà trên phố đã được gắn tên bạn!`
+        : user.presetType === 'vip_full'
+          ? `👑 Đã đăng nhập tài khoản Test VIP "${user.username}" (Full LV.5 • 30 Huy hiệu • 18 Skin)!`
+          : user.presetType === 'basic'
+            ? `🌱 Đã đăng nhập tài khoản Test Cơ Bản "${user.username}" (LV.0 • 0 Huy hiệu)!`
+            : `🏡 Chào mừng "${user.username}" trở lại Thị Trấn Sao Bông!`
+    );
+  };
+
+  const handleUpdateProfileInfo = ({ email, phone, birthday }) => {
+    const uname = resident.username || resident.nickname;
+    updateUserProfileInfo(uname, { email, phone, birthday });
+    updateResident((prev) => ({
+      ...prev,
+      email: email || '',
+      phone: phone || '',
+      birthday: birthday || '',
+    }));
+    showToast('💾 Đã lưu thông tin đồng bộ & khôi phục tài khoản!');
+  };
+
   const handleResidentAuthSubmit = (e) => {
     e.preventDefault();
     const cleanNick = authNicknameInput.trim();
@@ -1004,6 +1149,12 @@ export default function App() {
   const handleWishSubmit = (e) => {
     e.preventDefault();
     if (appState.wishSubmittedToday) return;
+
+    const blockCheck = checkCurrentUserBlocked(resident.username || resident.nickname);
+    if (blockCheck.isBlocked) {
+      showToast(`🚫 Không thể gửi lời chúc: ${blockCheck.reason}`);
+      return;
+    }
 
     const trimmedMsg = wishMessage.trim();
     if (!trimmedMsg) {
@@ -1377,10 +1528,12 @@ export default function App() {
           activeLetter={activeLetter}
           likedWishIds={resident.likedWishIds}
           savedStars={resident.savedStars}
+          isLoggedIn={resident.isLoggedIn}
           onSelectMood={handleSelectMood}
           onProceedToJarModal={handleProceedToJarModal}
           onDrawStarFromJarModal={handleDrawStar}
           onCloseFlowAndUnlockTown={handleCloseLetterAndUnlockTown}
+          onAuthSuccess={handleAuthSuccess}
           onLikeLetter={handleLikeLetter}
           onToggleSaveMemory={handleToggleSaveMemory}
           onCopyQuote={handleCopyQuote}
@@ -1403,24 +1556,53 @@ export default function App() {
           residentStats={residentStats}
           residentTab={residentTab}
           setResidentTab={setResidentTab}
-          authNicknameInput={authNicknameInput}
-          setAuthNicknameInput={setAuthNicknameInput}
-          authPinInput={authPinInput}
-          setAuthPinInput={setAuthPinInput}
-          onAuthSubmit={handleResidentAuthSubmit}
+          onAuthSuccess={handleAuthSuccess}
+          onUpdateProfileInfo={handleUpdateProfileInfo}
           onLogout={() =>
             updateResident((prev) => ({
               ...prev,
-              isLoggedIn: false
+              isLoggedIn: false,
+              testPresetType: null,
+              testPresetStats: null,
             }))
           }
           onToggleSaveMemory={handleToggleSaveMemory}
-          onSelectAvatar={(avatarId) => {
+          onSelectAvatar={(avatarId, skinName) => {
             updateResident((prev) => ({
               ...prev,
               avatarChoice: avatarId
             }));
-            showToast('✨ Đã thay đổi ngoại hình cho bạn nhỏ thành công!');
+            showToast(
+              skinName
+                ? `🎭 Đã mặc trang phục "${skinName}" cho bạn nhỏ!`
+                : '✨ Đã thay đổi ngoại hình cho bạn nhỏ thành công!'
+            );
+          }}
+          onToggleNightSleepy={() => {
+            updateResident((prev) => {
+              const nextDisabled = !prev.disableNightSleepy;
+              showToast(
+                nextDisabled
+                  ? '🌙 Đã tắt tự mặc Bé Ngái Ngủ (22h–04h), bạn nhỏ sẽ mặc skin bạn chọn cả ngày!'
+                  : '🌙 Đã bật tự mặc Bé Ngái Ngủ trong khung giờ 22h–04h!'
+              );
+              return {
+                ...prev,
+                disableNightSleepy: nextDisabled,
+              };
+            });
+          }}
+          onShowToast={showToast}
+          onPinBadge={(badgeId, badgeInfo) => {
+            updateResident((prev) => ({
+              ...prev,
+              pinnedBadgeId: badgeId || null
+            }));
+            if (badgeId && badgeInfo) {
+              showToast(`📌 Đã ghim huy hiệu "${badgeInfo.titleName}" lên Thẻ Cư Dân!`);
+            } else {
+              showToast('📌 Đã bỏ ghim huy hiệu khỏi Thẻ Cư Dân.');
+            }
           }}
           onClose={() => setIsResidentModalOpen(false)}
         />

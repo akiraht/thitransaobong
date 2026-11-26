@@ -12,8 +12,24 @@ import { BUILTIN_DAILY_COMICS } from '../data/dailyComicsData';
 import ComicBookViewer from '../components/ComicBookViewer';
 import { STORAGE_KEY } from '../config/constants';
 import { SafeStorage, loadInitialState } from '../utils/storage';
+import {
+  loadUserAccounts,
+  loadBlockedIps,
+  loadBlockedDevices,
+  toggleBlockUser,
+  toggleBlockIp,
+  toggleBlockDevice,
+  ensureSeedTestAccounts,
+  loginAdminAccount,
+  ADMIN_USERNAME,
+} from '../utils/userAuthService';
 
-const ADMIN_PIN = (import.meta.env.VITE_ADMIN_PIN || '1234').trim();
+const getMainAppUrl = () => {
+  if (typeof window === 'undefined') return '/';
+  const { protocol, hostname, port } = window.location;
+  const cleanHost = hostname.replace(/^manunit\./i, '');
+  return `${protocol}//${cleanHost}${port ? `:${port}` : ''}/`;
+};
 
 const TOWN_MAP_OPTIONS = [
   { id: 'map_hope_hill', name: 'Đỉnh Đồi Hy Vọng' },
@@ -74,15 +90,21 @@ export default function AdminPage() {
       return false;
     }
   });
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState('');
-  const [activeTab, setActiveTab] = useState('comics'); // 'comics' | 'quests' | 'wishes'
+  const [adminUserInput, setAdminUserInput] = useState('');
+  const [adminPwdInput, setAdminPwdInput] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [activeTab, setActiveTab] = useState('comics'); // 'comics' | 'quests' | 'wishes' | 'users'
   const [toast, setToast] = useState('');
 
   // Dữ liệu chính
   const [adminComics, setAdminComics] = useState([]);
   const [customQuests, setCustomQuests] = useState(() => loadAdminCustomQuests());
   const [sheetWishes, setSheetWishes] = useState(() => loadInitialState().sheetWishes || []);
+  const [userAccounts, setUserAccounts] = useState(() => loadUserAccounts());
+  const [blockedIps, setBlockedIps] = useState(() => loadBlockedIps());
+  const [blockedDevices, setBlockedDevices] = useState(() => loadBlockedDevices());
+  const [userSearch, setUserSearch] = useState('');
+  const [userFilter, setUserFilter] = useState('all'); // 'all' | 'active' | 'blocked'
 
   // --- TRẠNG THÁI TAB TRUYỆN ---
   const [comicMode, setComicMode] = useState('list'); // 'list' | 'form'
@@ -136,8 +158,9 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    document.title = 'Admin Dark — Thị Trấn Sao Bông';
+    document.title = 'Manunit Admin — Thị Trấn Sao Bông';
     reloadComics();
+    ensureSeedTestAccounts().then((list) => setUserAccounts(list)).catch(() => {});
   }, []);
 
   const persistSheetWishes = (nextWishes) => {
@@ -148,15 +171,19 @@ export default function AdminPage() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (pinInput.trim() === ADMIN_PIN) {
+    const res = loginAdminAccount({
+      username: adminUserInput,
+      password: adminPwdInput,
+    });
+    if (res.ok) {
       setIsUnlocked(true);
-      setPinError('');
-      setPinInput('');
+      setLoginError('');
+      setAdminPwdInput('');
       try {
         sessionStorage.setItem('TTSB_ADMIN_AUTH', '1');
       } catch {}
     } else {
-      setPinError('Mã PIN chưa đúng (mặc định: 1234).');
+      setLoginError(res.error);
     }
   };
 
@@ -538,7 +565,7 @@ export default function AdminPage() {
     return true;
   });
 
-  // ===================== MÀN HÌNH ĐĂNG NHẬP PIN (DARK MODE) =====================
+  // ===================== MÀN HÌNH ĐĂNG NHẬP QUẢN TRỊ RIÊNG BIỆT (DARK MODE) =====================
   if (!isUnlocked) {
     return (
       <div className="min-h-screen bg-[#0B1120] flex items-center justify-center p-4 font-sans text-slate-100">
@@ -547,42 +574,59 @@ export default function AdminPage() {
             <div className="inline-flex w-14 h-14 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-3xl items-center justify-center mb-1">
               🛠️
             </div>
-            <h1 className="text-xl font-bold text-white">Sao Bông Admin</h1>
-            <p className="text-sm text-slate-400">
-              Hệ thống quản trị độc lập (Local IndexedDB)
+            <h1 className="text-xl font-bold text-white">Manunit Admin • Sao Bông</h1>
+            <p className="text-xs text-slate-400">
+              Cổng quản trị độc lập — chỉ dành cho tài khoản Quản trị viên (tài khoản cư dân không thể đăng nhập)
             </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-400 mb-1.5">
-                Mã PIN Quản Trị (mặc định: <code className="text-amber-400">1234</code>)
+                Tài khoản Quản trị
+              </label>
+              <input
+                type="text"
+                autoFocus
+                autoComplete="username"
+                value={adminUserInput}
+                onChange={(e) => {
+                  setAdminUserInput(e.target.value);
+                  setLoginError('');
+                }}
+                placeholder={`Nhập username (mặc định: ${ADMIN_USERNAME})`}
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 outline-none text-sm font-semibold text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+                Mật khẩu Quản trị
               </label>
               <input
                 type="password"
-                inputMode="numeric"
-                autoFocus
-                value={pinInput}
+                autoComplete="current-password"
+                value={adminPwdInput}
                 onChange={(e) => {
-                  setPinInput(e.target.value);
-                  setPinError('');
+                  setAdminPwdInput(e.target.value);
+                  setLoginError('');
                 }}
-                placeholder="Nhập mã PIN..."
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 outline-none text-center text-lg tracking-widest font-semibold text-white"
+                placeholder="Nhập mật khẩu quản trị..."
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 outline-none text-sm font-semibold text-white"
               />
-              {pinError && <p className="mt-1.5 text-xs font-semibold text-rose-400">{pinError}</p>}
+              {loginError && <p className="mt-1.5 text-xs font-semibold text-rose-400">{loginError}</p>}
             </div>
 
             <button
               type="submit"
               className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition"
             >
-              Đăng nhập trang Admin
+              Đăng nhập trang Quản trị
             </button>
           </form>
 
           <div className="pt-3 border-t border-slate-800 text-center">
-            <a href="/" className="text-xs font-semibold text-slate-400 hover:text-indigo-400 transition">
+            <a href={getMainAppUrl()} className="text-xs font-semibold text-slate-400 hover:text-indigo-400 transition">
               ⬅️ Quay lại game Thị Trấn Sao Bông
             </a>
           </div>
@@ -605,7 +649,7 @@ export default function AdminPage() {
             <p className="text-xs text-slate-400 mt-0.5">Dark CMS • Local Storage</p>
           </div>
           <a
-            href="/"
+            href={getMainAppUrl()}
             className="md:hidden px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-semibold text-slate-200 border border-slate-700"
           >
             ⬅️ Vào Game
@@ -617,6 +661,7 @@ export default function AdminPage() {
             { id: 'comics', icon: '🖼️', label: 'Truyện Tranh', count: adminComics.length + BUILTIN_DAILY_COMICS.length },
             { id: 'quests', icon: '🎯', label: 'Nhiệm Vụ', count: customQuests.length },
             { id: 'wishes', icon: '💌', label: 'Lời Chúc & Backup', count: sheetWishes.length },
+            { id: 'users', icon: '👥', label: 'Quản Lý Cư Dân', count: userAccounts.length },
           ].map((nav) => (
             <button
               key={nav.id}
@@ -645,7 +690,7 @@ export default function AdminPage() {
 
         <div className="hidden md:flex flex-col gap-2 p-4 border-t border-slate-800">
           <a
-            href="/"
+            href={getMainAppUrl()}
             className="w-full py-2 px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-bold text-center transition"
           >
             ⬅️ Mở Game Thị Trấn Sao Bông
@@ -1580,6 +1625,326 @@ export default function AdminPage() {
             </form>
           </div>
         )}
+
+        {/* ======================== TAB 4: QUẢN LÝ CƯ DÂN (USERS & BLOCK IP/THIẾT BỊ) ======================== */}
+        {activeTab === 'users' && (() => {
+          const blockedIpSet = new Set(blockedIps.map((i) => i.ip));
+          const blockedDevSet = new Set(blockedDevices.map((d) => d.deviceId));
+          const q = userSearch.trim().toLowerCase();
+          const filteredUsers = userAccounts.filter((u) => {
+            if (userFilter === 'active' && u.blocked) return false;
+            if (userFilter === 'blocked' && !u.blocked) return false;
+            if (!q) return true;
+            return (
+              (u.username || '').toLowerCase().includes(q) ||
+              (u.email || '').toLowerCase().includes(q) ||
+              (u.phone || '').toLowerCase().includes(q) ||
+              (u.lastIp || u.ip || '').toLowerCase().includes(q) ||
+              (u.deviceLabel || '').toLowerCase().includes(q) ||
+              (u.deviceId || '').toLowerCase().includes(q)
+            );
+          });
+
+          const totalBlockedUsers = userAccounts.filter((u) => u.blocked).length;
+
+          const handleRefreshUsers = () => {
+            setUserAccounts(loadUserAccounts());
+            setBlockedIps(loadBlockedIps());
+            setBlockedDevices(loadBlockedDevices());
+            showToast('🔄 Đã làm mới danh sách cư dân!');
+          };
+
+          const handleToggleUserBlock = (u) => {
+            if (u.blocked) {
+              setUserAccounts(toggleBlockUser(u.id, false, ''));
+              showToast(`✅ Đã mở khóa tài khoản "${u.username}".`);
+            } else {
+              const reason = window.prompt(
+                `Nhập lý do khóa tài khoản "${u.username}" (chặn đăng nhập, gửi lời chúc & câu chuyện):`,
+                'Spam nội dung không phù hợp'
+              );
+              if (reason === null) return;
+              setUserAccounts(toggleBlockUser(u.id, true, reason.trim() || 'Vi phạm quy định cộng đồng'));
+              showToast(`🚫 Đã khóa tài khoản "${u.username}".`);
+            }
+          };
+
+          const handleToggleIpBlock = (ip) => {
+            if (!ip || ip === 'Offline / Local') {
+              showToast('⚠️ Không thể chặn IP nội bộ Offline / Local.');
+              return;
+            }
+            const isBlocked = blockedIpSet.has(ip);
+            if (isBlocked) {
+              setBlockedIps(toggleBlockIp(ip, false));
+              showToast(`✅ Đã gỡ chặn IP ${ip}.`);
+            } else {
+              const reason = window.prompt(`Nhập lý do chặn IP ${ip}:`, 'Spam lời chúc / câu chuyện');
+              if (reason === null) return;
+              setBlockedIps(toggleBlockIp(ip, true, reason.trim() || 'Chặn IP spam'));
+              showToast(`🛡️ Đã chặn IP ${ip}!`);
+            }
+          };
+
+          const handleToggleDeviceBlock = (deviceId, deviceLabel) => {
+            if (!deviceId) return;
+            const isBlocked = blockedDevSet.has(deviceId);
+            if (isBlocked) {
+              setBlockedDevices(toggleBlockDevice(deviceId, false));
+              showToast(`✅ Đã gỡ chặn thiết bị ${deviceId}.`);
+            } else {
+              const reason = window.prompt(
+                `Nhập lý do chặn thiết bị "${deviceLabel || deviceId}":`,
+                'Thiết bị spam nội dung xấu'
+              );
+              if (reason === null) return;
+              setBlockedDevices(toggleBlockDevice(deviceId, true, reason.trim() || 'Chặn thiết bị spam'));
+              showToast(`📵 Đã chặn thiết bị ${deviceId}!`);
+            }
+          };
+
+          return (
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <span>👥</span>
+                    <span>Quản Lý Cư Dân &amp; Chống Spam (IP / Thiết Bị)</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Theo dõi thông tin tài khoản, địa chỉ IP, thiết bị truy cập và khóa ngay người dùng spam lời chúc hoặc truyện tranh.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRefreshUsers}
+                  className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition"
+                >
+                  🔄 Làm mới dữ liệu
+                </button>
+              </div>
+
+              {/* Thống kê nhanh */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="p-4 rounded-2xl bg-[#111827] border border-slate-800">
+                  <div className="text-xs text-slate-400">Tổng tài khoản</div>
+                  <div className="text-2xl font-bold text-white mt-1">{userAccounts.length}</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-[#111827] border border-slate-800">
+                  <div className="text-xs text-slate-400">Đang hoạt động</div>
+                  <div className="text-2xl font-bold text-emerald-400 mt-1">
+                    {userAccounts.length - totalBlockedUsers}
+                  </div>
+                </div>
+                <div className="p-4 rounded-2xl bg-[#111827] border border-slate-800">
+                  <div className="text-xs text-slate-400">Tài khoản bị khóa</div>
+                  <div className="text-2xl font-bold text-rose-400 mt-1">{totalBlockedUsers}</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-[#111827] border border-slate-800">
+                  <div className="text-xs text-slate-400">IP / Thiết bị bị chặn</div>
+                  <div className="text-2xl font-bold text-amber-400 mt-1">
+                    {blockedIps.length} IP / {blockedDevices.length} TB
+                  </div>
+                </div>
+              </div>
+
+              {/* Thanh tìm kiếm & bộ lọc */}
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  type="text"
+                  placeholder="Tìm theo Username, Email, SĐT, IP, Thiết bị..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="flex-1 min-w-[220px] px-4 py-2.5 rounded-xl bg-[#111827] border border-slate-700 text-sm text-white outline-none focus:border-indigo-500"
+                />
+                <div className="flex gap-1.5">
+                  {[
+                    { id: 'all', label: 'Tất cả' },
+                    { id: 'active', label: 'Hoạt động' },
+                    { id: 'blocked', label: 'Đã khóa' },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setUserFilter(f.id)}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${
+                        userFilter === f.id
+                          ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300'
+                          : 'bg-[#111827] border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Danh sách User */}
+              {filteredUsers.length === 0 ? (
+                <div className="p-10 rounded-2xl bg-[#111827] border border-dashed border-slate-800 text-center space-y-2">
+                  <div className="text-3xl">👥</div>
+                  <p className="text-sm font-semibold text-slate-300">
+                    Chưa có tài khoản cư dân nào khớp bộ lọc.
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Khi người chơi đăng ký tài khoản cư dân trong game, thông tin Username, IP &amp; Thiết bị sẽ tự động xuất hiện tại đây.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredUsers.map((u) => {
+                    const userIp = u.lastIp || u.ip || 'Offline / Local';
+                    const isIpBlocked = blockedIpSet.has(userIp);
+                    const isDevBlocked = blockedDevSet.has(u.deviceId);
+                    return (
+                      <div
+                        key={u.id}
+                        className={`p-4 rounded-2xl border transition space-y-3 ${
+                          u.blocked || isIpBlocked || isDevBlocked
+                            ? 'bg-rose-950/20 border-rose-500/40'
+                            : 'bg-[#111827] border-slate-800'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-base font-bold text-white">@{u.username}</span>
+                              {u.blocked ? (
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 border border-rose-500/50 text-rose-300">
+                                  🚫 Đã khóa: {u.blockReason || 'Vi phạm'}
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-300">
+                                  ✅ Hoạt động
+                                </span>
+                              )}
+                              {isIpBlocked && (
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 border border-amber-500/50 text-amber-300">
+                                  🛡️ IP bị chặn
+                                </span>
+                              )}
+                              {isDevBlocked && (
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-orange-500/20 border border-orange-500/50 text-orange-300">
+                                  📵 Thiết bị bị chặn
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+                              <span>📧 Email: <strong className="text-slate-200">{u.email || 'Chưa bổ sung'}</strong></span>
+                              <span>📱 SĐT: <strong className="text-slate-200">{u.phone || 'Chưa bổ sung'}</strong></span>
+                              <span>🎂 Ngày sinh: <strong className="text-slate-200">{u.birthday || 'Chưa bổ sung'}</strong></span>
+                            </div>
+                          </div>
+
+                          <div className="text-right text-[11px] text-slate-400 shrink-0">
+                            <div>Đăng ký: {u.createdAt ? new Date(u.createdAt).toLocaleString('vi-VN') : '—'}</div>
+                            <div>Gần nhất: {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('vi-VN') : '—'}</div>
+                          </div>
+                        </div>
+
+                        {/* Thông tin IP & Thiết bị */}
+                        <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400 shrink-0">🌐 IP Thiết bị:</span>
+                            <code className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-sky-300 font-mono">
+                              {userIp}
+                            </code>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-slate-400 shrink-0">💻 Thiết bị:</span>
+                            <span className="text-slate-200 font-semibold">{u.deviceLabel || 'Không rõ'}</span>
+                            {u.deviceId && (
+                              <code className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-[10px] text-slate-400 font-mono">
+                                {u.deviceId}
+                              </code>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Nút hành động Block / Unblock */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleUserBlock(u)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                              u.blocked
+                                ? 'bg-emerald-600/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-600/30'
+                                : 'bg-rose-600/20 border-rose-500/40 text-rose-300 hover:bg-rose-600/30'
+                            }`}
+                          >
+                            {u.blocked ? '✅ Mở khóa tài khoản' : '🚫 Khóa tài khoản'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleIpBlock(userIp)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                              isIpBlocked
+                                ? 'bg-emerald-600/20 border-emerald-500/40 text-emerald-300'
+                                : 'bg-amber-600/20 border-amber-500/40 text-amber-300 hover:bg-amber-600/30'
+                            }`}
+                          >
+                            {isIpBlocked ? '✅ Gỡ chặn IP' : '🛡️ Chặn IP này'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleDeviceBlock(u.deviceId, u.deviceLabel)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                              isDevBlocked
+                                ? 'bg-emerald-600/20 border-emerald-500/40 text-emerald-300'
+                                : 'bg-orange-600/20 border-orange-500/40 text-orange-300 hover:bg-orange-600/30'
+                            }`}
+                          >
+                            {isDevBlocked ? '✅ Gỡ chặn thiết bị' : '📵 Chặn thiết bị'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Danh sách IP & Thiết bị đang bị chặn */}
+              {(blockedIps.length > 0 || blockedDevices.length > 0) && (
+                <div className="p-4 rounded-2xl bg-[#111827] border border-slate-800 space-y-3">
+                  <h3 className="text-sm font-bold text-rose-300">🛡️ Danh Sách IP &amp; Thiết Bị Đang Bị Chặn</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {blockedIps.map((item) => (
+                      <span
+                        key={item.ip}
+                        className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/40 text-xs text-amber-200"
+                      >
+                        <span>IP: {item.ip}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleIpBlock(item.ip)}
+                          className="text-rose-300 hover:text-white font-bold"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                    {blockedDevices.map((item) => (
+                      <span
+                        key={item.deviceId}
+                        className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/15 border border-orange-500/40 text-xs text-orange-200"
+                      >
+                        <span>TB: {item.deviceId}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleDeviceBlock(item.deviceId)}
+                          className="text-rose-300 hover:text-white font-bold"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </main>
 
       {/* ================= MODAL XEM TRƯỚC TRUYỆN DẠNG SÁCH TRUYỆN MỞ ĐÔI ================= */}
