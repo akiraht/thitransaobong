@@ -378,7 +378,7 @@ export default function RacingMiniGame() {
           </div>
 
           {/* Nút điều khiển cảm ứng trái/phải */}
-          <div className="grid grid-cols-2 gap-3 shrink-0">
+          <div className="racing-controls-bar grid grid-cols-2 gap-3 shrink-0">
             <button
               type="button"
               onClick={moveLeft}
@@ -394,7 +394,7 @@ export default function RacingMiniGame() {
               Sang Phải ➡️
             </button>
           </div>
-          <p className="text-center text-[11px] font-bold text-[#7D5867] shrink-0">
+          <p className="racing-helper-tip text-center text-[11px] font-bold text-[#7D5867] shrink-0">
             Chạm làn đường, bấm nút hoặc phím <strong>← / →</strong> (A / D). Chạy vô hạn, ăn ⭐ né ⛈️!
           </p>
         </div>

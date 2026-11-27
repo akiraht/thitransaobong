@@ -19,13 +19,22 @@ import {
 } from '../data/townMapsConfig';
 import TownMapSwitcher, { CloudTransitionOverlay } from './TownMapSwitcher';
 import MapIntroModal from './MapIntroModal';
+import DecorShopModal from './DecorShopModal';
+import ShopBuildingPlot from './ShopBuildingPlot';
+import DecorArt from './DecorArt';
 import QuestTrackerHud from './QuestTrackerHud';
-import { TOWN_CHARACTERS } from '../data/characterSprites';
+import { TOWN_CHARACTERS, CHARACTER_SPRITES } from '../data/characterSprites';
 import {
   getResidentUnlockLevel,
   getMapUnlockLevel,
   isMapUnlockedAtLevel,
 } from '../config/progressionConfig';
+import {
+  DECOR_SLOTS,
+  DECOR_ITEM_DICT,
+  getShopByMapId,
+} from '../config/houseDecorConfig';
+import { loadHouseDecorState, DECOR_UPDATED_EVENT } from '../utils/houseDecorService';
 
 const VISITED_MAPS_STORAGE_KEY = 'TTSB_VISITED_MAPS_V1';
 
@@ -96,14 +105,14 @@ function HillHouseItem({
         )}
 
         <div
-          className={`absolute ${signPosClass} z-30 pointer-events-auto transition-transform duration-300 group-hover:scale-105`}
+          className={`town-sign-scale absolute ${signPosClass} z-30 pointer-events-auto transition-transform duration-300 group-hover:scale-105`}
         >
           <HouseWoodenSignpostSvg name={houseData.signName || char.signName || char.houseName || char.name} />
         </div>
 
         <div
           style={{ transitionDelay: delay }}
-          className={`absolute -bottom-1.5 z-30 transition-all duration-700 ease-out flex flex-col items-center ${
+          className={`town-npc-scale absolute -bottom-1.5 z-30 transition-all duration-700 ease-out flex flex-col items-center ${
             canInteract
               ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto'
               : 'opacity-0 scale-0 translate-y-6 pointer-events-none'
@@ -227,8 +236,16 @@ export default function TownStreetScene({
     return 'map_hope_hill';
   });
   const [introMapData, setIntroMapData] = useState(null);
+  const [activeShop, setActiveShop] = useState(null);
+  const [decorState, setDecorState] = useState(loadHouseDecorState);
   const [mapLockNotice, setMapLockNotice] = useState('');
   const [isTransitioning, setIsTransitioning] = useState(false);
+
+  useEffect(() => {
+    const syncDecor = () => setDecorState(loadHouseDecorState());
+    window.addEventListener(DECOR_UPDATED_EVENT, syncDecor);
+    return () => window.removeEventListener(DECOR_UPDATED_EVENT, syncDecor);
+  }, []);
 
   useEffect(() => {
     try {
@@ -468,7 +485,7 @@ export default function TownStreetScene({
       {/* ================= HUD CỐ ĐỊNH TRÊN CÙNG: TIÊU ĐỀ & BỘ ĐẾM SAO ================= */}
       <div
         style={{ top: 'max(0.4rem, env(safe-area-inset-top))' }}
-        className="fixed left-1/2 -translate-x-1/2 z-[880] pointer-events-none flex flex-col items-center w-full max-w-[96vw] px-2"
+        className="town-title-anchor fixed left-1/2 -translate-x-1/2 z-[880] pointer-events-none flex flex-col items-center w-full max-w-[96vw] px-2"
       >
         <div className="landscape-header-wrap scale-[0.82] sm:scale-100 origin-top">
           <TownArchedHeaderSvg />
@@ -620,6 +637,9 @@ export default function TownStreetScene({
       {/* POPUP GIỚI THIỆU BẢN ĐỒ LẦN ĐẦU ĐẶT CHÂN ĐẾN */}
       <MapIntroModal mapData={introMapData} onClose={() => setIntroMapData(null)} />
 
+      {/* MODAL CỬA HÀNG TRANG TRÍ NGÔI NHÀ THEO CHỦ ĐỀ BẢN ĐỒ */}
+      <DecorShopModal shop={activeShop} onClose={() => setActiveShop(null)} />
+
       {/* HIỆU ỨNG MÂY TRẮNG CHUYỂN CẢNH */}
       <CloudTransitionOverlay
         isTransitioning={isTransitioning}
@@ -640,7 +660,7 @@ export default function TownStreetScene({
             : 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
           willChange: isPannable ? 'transform' : 'auto'
         }}
-        className="relative h-full"
+        className="relative h-full isolate z-[1]"
       >
         {/* 1. PHÔNG NỀN BẢN ĐỒ 16:9 */}
         <TownHillBackgroundSvg customBgImage={currentMapData.bgImage} />
@@ -665,10 +685,27 @@ export default function TownStreetScene({
               <button
                 type="button"
                 onClick={onOpenUserHouse}
-                title="Chạm vào Ngôi Nhà Của Bạn để xem thông tin & huy hiệu"
+                title="Chạm vào Ngôi Nhà Của Bạn để xem thông tin, huy hiệu & trang trí nhà"
                 className="group relative flex flex-col items-center focus:outline-none cursor-pointer transition-transform duration-300 hover:scale-105 hover:-translate-y-1"
               >
-                <UserHouseSvg houseTitle={userHouseTitle} isRegistered={resident.isLoggedIn} />
+                <div className="relative">
+                  <UserHouseSvg houseTitle={userHouseTitle} isRegistered={resident.isLoggedIn} />
+                  {/* Hiển thị trực tiếp 6 vị trí đồ trang trí đã gắn lên Ngôi Nhà */}
+                  {DECOR_SLOTS.map((slot) => {
+                    const eqId = decorState.equipped?.[slot.id];
+                    const eqItem = eqId ? DECOR_ITEM_DICT[eqId] : null;
+                    if (!eqItem) return null;
+                    return (
+                      <div
+                        key={slot.id}
+                        style={{ top: slot.pos.top, left: slot.pos.left }}
+                        className="absolute -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none"
+                      >
+                        <DecorArt item={eqItem} className={slot.sizeClass} />
+                      </div>
+                    );
+                  })}
+                </div>
                 {!resident.isLoggedIn && (
                   <span className="-mt-1.5 px-2.5 py-0.5 rounded-full bg-[#FFF3B0] border-2 border-[#593A47] text-[9px] sm:text-[10px] font-extrabold text-[#593A47] shadow-[0_2px_0_#593A47] group-hover:bg-[#FFE066] whitespace-nowrap">
                     ✨ Chạm vào nhà để đăng ký tên
@@ -698,7 +735,7 @@ export default function TownStreetScene({
             className="group absolute w-[11%] min-w-[78px] max-w-[140px] aspect-[4/5] rounded-3xl pointer-events-auto cursor-pointer focus:outline-none flex flex-col items-center justify-start"
           >
             {/* Badge số thẻ sao đã mở gắn tinh tế trên miệng lọ */}
-            <span className="-mt-2 px-2 py-0.5 rounded-full bg-[#FFF3B0] group-hover:bg-[#FFE066] border-2 border-[#593A47] shadow-[0_2px_0_#593A47] text-[10px] sm:text-[11px] font-black text-[#593A47] flex items-center gap-1 whitespace-nowrap transition-transform group-hover:scale-105">
+            <span className="town-starjar-badge -mt-2 px-2 py-0.5 rounded-full bg-[#FFF3B0] group-hover:bg-[#FFE066] border-2 border-[#593A47] shadow-[0_2px_0_#593A47] text-[10px] sm:text-[11px] font-black text-[#593A47] flex items-center gap-1 whitespace-nowrap transition-transform group-hover:scale-105">
               <span>🗂️</span>
               <span>{historyCount}</span>
               <span className="hidden sm:inline">Thẻ sao</span>
@@ -774,6 +811,13 @@ export default function TownStreetScene({
             </button>
           ))}
 
+        {/* ================= NGÔI NHÀ CỬA TIỆM + NPC CHỦ TIỆM TRÊN Ô ĐẤT TRỐNG ================= */}
+        {isTownUnlocked && (() => {
+          const mapShop = getShopByMapId(currentMapId);
+          if (!mapShop) return null;
+          return <ShopBuildingPlot shop={mapShop} onOpenShop={setActiveShop} />;
+        })()}
+
         {/* CÁC CỔNG DỊCH CHUYỂN (WARP PORTALS) THIẾT KẾ DẠNG CỔNG VÒM PHÁT SÁNG NỔI BẬT */}
         {currentMapData.portals &&
           currentMapData.portals.map((portal) => {
@@ -798,7 +842,7 @@ export default function TownStreetScene({
                       ? `Đi qua cổng đến ${portal.label}`
                       : `Cổng đến ${portal.label} — Mở khóa ở LV.${reqLv}`
                   }
-                  className="group flex flex-col items-center focus:outline-none transition-transform duration-300 hover:scale-110 active:scale-95 cursor-pointer"
+                  className="town-portal-scale group flex flex-col items-center focus:outline-none transition-transform duration-300 hover:scale-110 active:scale-95 cursor-pointer"
                 >
                   {/* Cổng vòm phép thuật Kawaii phát sáng */}
                   <div className="relative flex items-center justify-center">
@@ -947,8 +991,8 @@ export default function TownStreetScene({
               </p>
             </div>
 
-            <div className="mt-2 pt-2 border-t-2 border-dashed border-[#F0DCE5] flex items-center justify-end sm:justify-between gap-2">
-              <span className="text-[11px] font-bold text-[#8C6575] hidden sm:inline">
+            <div className="landscape-dialogue-footer mt-2 pt-2 border-t-2 border-dashed border-[#F0DCE5] flex items-center justify-end sm:justify-between gap-2">
+              <span className="dialogue-space-hint text-[11px] font-bold text-[#8C6575] hidden sm:inline">
                 * Nhấn phím <kbd className="px-1.5 py-0.5 rounded bg-gray-100 border border-[#593A47] font-mono text-[10px]">Space</kbd> để trò chuyện với {dialogueData.activeNearLandmark.speaker}
               </span>
               <button

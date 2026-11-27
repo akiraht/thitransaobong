@@ -304,8 +304,8 @@ export default function PuzzleMiniGame() {
           </div>
         </div>
 
-        {/* Khu vực chính: Khung ghép tranh (trái) + Khay mảnh ghép (phải) */}
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] gap-4 items-start">
+        {/* Khu vực chính: Khung ghép tranh (trái) + Khay mảnh ghép (phải) — 2 cột từ Mobile Ngang & iPad */}
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] gap-3 sm:gap-4 items-start">
           {/* Khung ghép tranh N x N */}
           <div className="p-3 rounded-3xl bg-[#FFFDF9] border-[3px] border-[#593A47] shadow-[0_6px_0_#593A47]">
             <div className="flex items-center justify-between mb-2 px-1">

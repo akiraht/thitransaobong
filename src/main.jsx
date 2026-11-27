@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
+import RotateDeviceOverlay from './components/RotateDeviceOverlay.jsx';
 import './index.css';
 
 // Tách hoàn toàn bundle của Admin & Mini-Game khỏi trang Thị Trấn chính
@@ -38,12 +39,20 @@ function RootRouter() {
   }
   if (isMiniGameRoute()) {
     return (
-      <Suspense fallback={<RouteLoading />}>
-        <MiniGameRouterPage />
-      </Suspense>
+      <>
+        <RotateDeviceOverlay />
+        <Suspense fallback={<RouteLoading />}>
+          <MiniGameRouterPage />
+        </Suspense>
+      </>
     );
   }
-  return <App />;
+  return (
+    <>
+      <RotateDeviceOverlay />
+      <App />
+    </>
+  );
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

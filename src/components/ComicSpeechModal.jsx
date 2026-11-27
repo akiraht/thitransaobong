@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import CharacterAvatar from './CharacterAvatar';
 import { getMiniGameByNpcId } from '../config/minigamesConfig';
+import { getDailyPlayInfo, isMiniGameUnlocked } from '../utils/miniGameEconomy';
 
 export default function ComicSpeechModal({
   character,
@@ -36,7 +37,7 @@ export default function ComicSpeechModal({
         {/* Nhãn Comic vát nghiêng trên góc trái */}
         <div
           style={{ backgroundColor: character.roofColor }}
-          className="absolute -top-4 left-6 -rotate-2 px-4 py-1 rounded-xl border-[3px] border-[#593A47] shadow-[0_4px_0_#593A47] font-extrabold text-sm sm:text-base text-[#593A47] uppercase tracking-wider"
+          className="comic-badge-tag absolute -top-4 left-6 -rotate-2 px-4 py-1 rounded-xl border-[3px] border-[#593A47] shadow-[0_4px_0_#593A47] font-extrabold text-sm sm:text-base text-[#593A47] uppercase tracking-wider"
         >
           💬 Hộp Thoại Cư Dân • {character.houseNumber}
         </div>
@@ -46,17 +47,17 @@ export default function ComicSpeechModal({
           type="button"
           onClick={onClose}
           aria-label="Đóng hộp thoại"
-          className="kawaii-btn w-10 h-10 bg-[#FFE4EE] hover:bg-[#FFC9DC] text-[#593A47] font-extrabold text-lg flex items-center justify-center absolute -top-4 -right-3"
+          className="comic-close-btn kawaii-btn w-10 h-10 bg-[#FFE4EE] hover:bg-[#FFC9DC] text-[#593A47] font-extrabold text-lg flex items-center justify-center absolute -top-4 -right-3 cursor-pointer"
         >
           ✕
         </button>
 
-        <div className="flex flex-col sm:flex-row items-center gap-5 mt-2">
+        <div className="comic-body-row flex flex-col sm:flex-row items-center gap-5 mt-2">
           {/* Khung Avatar Nhân Vật kiểu Truyện Tranh */}
           <div className="relative shrink-0">
             <div
               style={{ backgroundColor: character.badgeBg }}
-              className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl border-[3.5px] border-[#593A47] shadow-[0_6px_0_#593A47] flex items-center justify-center p-2 relative overflow-visible"
+              className="comic-avatar-box w-28 h-28 sm:w-32 sm:h-32 rounded-3xl border-[3.5px] border-[#593A47] shadow-[0_6px_0_#593A47] flex items-center justify-center p-2 relative overflow-visible"
             >
               <CharacterAvatar id={character.id} className="w-24 h-24 sm:w-28 sm:h-28" />
             </div>
@@ -128,13 +129,19 @@ export default function ComicSpeechModal({
                 {(() => {
                   const npcGame = getMiniGameByNpcId(character.id);
                   if (!npcGame) return null;
+                  const unlocked = isMiniGameUnlocked(npcGame);
+                  const playInfo = getDailyPlayInfo(npcGame.id);
                   return (
                     <a
                       href={`/minigame/${npcGame.id}`}
                       className="kawaii-btn bg-[#FFE066] hover:bg-[#FFD166] text-[#593A47] font-extrabold text-sm sm:text-base px-4 py-2 inline-flex items-center gap-1.5"
                     >
-                      <span>🎮</span>
-                      <span>{npcGame.shortTitle}</span>
+                      <span>{unlocked ? '🎮' : '🔒'}</span>
+                      <span>
+                        {unlocked
+                          ? `${npcGame.shortTitle} (${playInfo.remainingPlays} lượt)`
+                          : `Mở khóa ${npcGame.shortTitle}`}
+                      </span>
                     </a>
                   );
                 })()}

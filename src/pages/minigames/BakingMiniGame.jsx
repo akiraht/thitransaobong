@@ -322,7 +322,7 @@ export default function BakingMiniGame() {
 
       <div className="w-full rounded-3xl overflow-hidden border-[3px] border-[#593A47] shadow-[0_7px_0_#593A47] bg-[#FFFDF9]">
         {/* === PHẦN 1: HÀNG CHỜ 3 KHÁCH HÀNG THEO THỨ TỰ XẾP HÀNG (1 -> 2 -> 3) === */}
-        <div className="relative bg-gradient-to-b from-[#7DD3FC] via-[#BAE6FD] to-[#FEF3C7] pt-3 pb-2.5 px-3 sm:px-6 overflow-hidden">
+        <div className="baking-customer-section relative bg-gradient-to-b from-[#7DD3FC] via-[#BAE6FD] to-[#FEF3C7] pt-3 pb-2.5 px-3 sm:px-6 overflow-hidden">
           <div
             className="absolute top-0 inset-x-0 h-4 border-b-2 border-[#593A47]/60 opacity-90"
             style={{
@@ -439,7 +439,7 @@ export default function BakingMiniGame() {
                     <img
                       src={CHARACTER_SPRITES[cust.npcId]}
                       alt={cust.customerName}
-                      className={`w-14 h-14 sm:w-20 sm:h-20 object-contain drop-shadow-[0_4px_4px_rgba(89,58,71,0.28)] transition-transform ${
+                      className={`baking-customer-avatar w-14 h-14 sm:w-20 sm:h-20 object-contain drop-shadow-[0_4px_4px_rgba(89,58,71,0.28)] transition-transform ${
                         isSelected ? 'scale-105' : ''
                       }`}
                     />
@@ -469,12 +469,13 @@ export default function BakingMiniGame() {
         </div>
 
         {/* === PHẦN 2: KHUNG LÒ NƯỚNG BÌNH MINH GỘP CHUNG BÀN BÀY BÁNH & 1 NÚT HÀNH ĐỘNG DUY NHẤT === */}
-        <div className="bg-gradient-to-b from-[#E6B88A] via-[#D9A06B] to-[#C68952] border-t-[3px] border-[#593A47] p-3 sm:p-5 space-y-3.5">
-          <div className="px-3 py-1.5 rounded-xl bg-[#FFFDF9] border-2 border-[#593A47] text-xs sm:text-sm font-extrabold text-center text-[#593A47] shadow-sm">
+        <div className="baking-counter-section bg-gradient-to-b from-[#E6B88A] via-[#D9A06B] to-[#C68952] border-t-[3px] border-[#593A47] p-3 sm:p-5 space-y-3.5">
+          <div className="baking-feedback-bar px-3 py-1.5 rounded-xl bg-[#FFFDF9] border-2 border-[#593A47] text-xs sm:text-sm font-extrabold text-center text-[#593A47] shadow-sm">
             {feedback}
           </div>
 
-          <div className="max-w-3xl mx-auto rounded-3xl bg-[#FFF6EC] border-[3px] border-[#593A47] shadow-[0_5px_0_rgba(89,58,71,0.35)] p-3.5 sm:p-4 space-y-3">
+          <div className="baking-workspace-grid space-y-3.5">
+          <div className="baking-oven-card max-w-3xl mx-auto rounded-3xl bg-[#FFF6EC] border-[3px] border-[#593A47] shadow-[0_5px_0_rgba(89,58,71,0.35)] p-3.5 sm:p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-sm font-black text-[#593A47]">
                 🔥 Lò Nướng & Bàn Bánh — Khách #{activeCustomer?.ticketNumber} ({activeCustomer?.customerName})
@@ -573,7 +574,7 @@ export default function BakingMiniGame() {
           </div>
 
           {/* === PHẦN 3: 3 KHAY NGUYÊN LIỆU BẾP (6 LOẠI MỖI KHAY = 18 NGUYÊN LIỆU) === */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="baking-trays-grid grid grid-cols-1 lg:grid-cols-3 gap-3">
             {[
               { title: '1. Khay Cốt Bánh (6 loại)', items: BASES, picked: pickedBase, onPick: setPickedBase },
               { title: '2. Khay Kem Phủ (6 loại)', items: CREAMS, picked: pickedCream, onPick: setPickedCream },
@@ -609,6 +610,7 @@ export default function BakingMiniGame() {
                 </div>
               </div>
             ))}
+          </div>
           </div>
         </div>
       </div>

@@ -60,6 +60,7 @@ import {
   ensureSeedTestAccounts,
 } from './utils/userAuthService';
 import { consumePendingMiniGameRewards } from './config/minigamesConfig';
+import { syncBadgeCountToStorage, addStars } from './utils/miniGameEconomy';
 
 export default function App() {
   const quotesByMood = useMemo(() => buildQuotesDatabase(), []);
@@ -253,6 +254,7 @@ export default function App() {
 
   useEffect(() => {
     const unlockedIds = residentStats.unlockedBadges.map((b) => b.id);
+    syncBadgeCountToStorage(unlockedIds.length);
     const unlockedSkinIds = (residentStats.unlockedSkins || []).map((s) => s.id);
     const currentLv = residentStats.levelInfo.level;
 
@@ -484,6 +486,7 @@ export default function App() {
     setDailyQuestsState((prev) => {
       const { next, completedNow } = applyQuestAction(prev, actionType);
       if (completedNow) {
+        addStars(completedNow.rewardStars || 0);
         setTimeout(() => {
           showToast(`🎯 Xong nhiệm vụ ngày: "${completedNow.title}" (+${completedNow.rewardStars} ⭐)`);
         }, 120);
@@ -496,6 +499,7 @@ export default function App() {
     setDailyQuestsState((prev) => {
       const next = claimDailyCompletionBox(prev);
       if (next !== prev) {
+        addStars(50);
         showToast(`🎁 Nhận +50 Sao Bông! Chuỗi chuyên cần: 🔥 ${next.dailyStreak} ngày!`);
       }
       return next;
@@ -506,6 +510,7 @@ export default function App() {
     setDailyQuestsState((prev) => {
       const { next, completedNow } = applyQuestById(prev, questId);
       if (completedNow) {
+        addStars(completedNow.rewardStars || 0);
         setTimeout(() => {
           showToast(
             explanation
@@ -522,6 +527,7 @@ export default function App() {
     setDailyQuestsState((prev) => {
       const { next, collectedTarget, completedNow } = applyDailyQuestItemCollect(prev, questId, targetId);
       if (completedNow) {
+        addStars(completedNow.rewardStars || 0);
         setTimeout(() => {
           showToast(`🎉 Đã tìm đủ vật phẩm cho "${completedNow.title}" (+${completedNow.rewardStars} ⭐)`);
         }, 80);

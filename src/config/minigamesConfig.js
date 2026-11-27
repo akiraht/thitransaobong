@@ -4,6 +4,8 @@
  * để không làm nặng bundle của trang thị trấn chính.
  */
 
+import { addStars } from '../utils/miniGameEconomy';
+
 export const MINIGAME_REWARD_STORAGE_KEY = 'TTSB_MINIGAME_PENDING_REWARD_V1';
 
 export const MINIGAMES_CONFIG = {
@@ -97,6 +99,75 @@ export const MINIGAMES_CONFIG = {
     rewardStars: 30,
     desc: 'Chạm màn hình hoặc nhấn Space để Bé Sao Bông né Tia Sét & Cây Xương Rồng! Đạt 24 sao hoàn thành NV ngày!',
   },
+  // --- 4 MINI-GAME MỞ RỘNG (MỞ KHÓA BẰNG HUY HIỆU HOẶC ĐỔI SAO) ---
+  memory: {
+    id: 'memory',
+    npcId: 'aurora',
+    npcName: 'Bà Cực Quang',
+    houseName: 'Vòm Lều Ánh Sáng',
+    title: 'Lật Thẻ Ký Ức',
+    shortTitle: 'Lật Thẻ Cư Dân 4×4',
+    icon: '🃏',
+    genre: 'Trí nhớ • Cặp đôi',
+    accentBg: '#F3E8FF',
+    accentBorder: '#9333EA',
+    rewardHearts: 3,
+    rewardStars: 35,
+    unlockBadges: 3,
+    unlockStars: 120,
+    desc: 'Lật mở 8 cặp thẻ cư dân Thị Trấn Sao Bông dưới ánh cực quang trước khi hết giờ!',
+  },
+  star2048: {
+    id: 'star2048',
+    npcId: 'saturn',
+    npcName: 'Bác Sao Thổ',
+    houseName: 'Đài Quan Sát Vành Đai',
+    title: '2048 Ngôi Sao',
+    shortTitle: 'Ghép Số 2048 Sao',
+    icon: '🪐',
+    genre: 'Trí tuệ • Ghép số',
+    accentBg: '#FEF3C7',
+    accentBorder: '#D97706',
+    rewardHearts: 4,
+    rewardStars: 45,
+    unlockBadges: 5,
+    unlockStars: 160,
+    desc: 'Trượt gộp các ngôi sao cùng cấp độ (2 → 4 → 8 → ... → 256) trên bàn thiên văn 4×4!',
+  },
+  snowcone: {
+    id: 'snowcone',
+    npcId: 'snowflake',
+    npcName: 'Cô Tuyết Bông',
+    houseName: 'Lâu Đài Băng Xinh',
+    title: 'Hứng Kem Tuyết 4 Mùa',
+    shortTitle: 'Hứng Kem Tuyết',
+    icon: '🍧',
+    genre: 'Phản xạ • Hứng quà',
+    accentBg: '#EBF8FF',
+    accentBorder: '#0284C7',
+    rewardHearts: 3,
+    rewardStars: 35,
+    unlockBadges: 7,
+    unlockStars: 200,
+    desc: 'Di chuyển ly ốc quế hứng đủ 20 viên kem tuyết ngọt ngào và né bom băng lạnh cóng!',
+  },
+  firefly: {
+    id: 'firefly',
+    npcId: 'firefly',
+    npcName: 'Bé Đom Đóm',
+    houseName: 'Tổ Đèn Ấm Áp',
+    title: 'Bắt Đom Đóm Đêm',
+    shortTitle: 'Bắt Đom Đóm Lấp Lánh',
+    icon: '🏮',
+    genre: 'Nhanh tay • Bắt sáng',
+    accentBg: '#FEF9C3',
+    accentBorder: '#CA8A04',
+    rewardHearts: 3,
+    rewardStars: 40,
+    unlockBadges: 9,
+    unlockStars: 240,
+    desc: 'Chạm nhanh bắt đom đóm vàng lấp lánh trong vườn đêm để đạt 20 điểm và tránh dơi ngủ gật!',
+  },
 };
 
 export const MINIGAMES_LIST = Object.values(MINIGAMES_CONFIG);
@@ -113,6 +184,10 @@ export function getMiniGameByNpcId(npcId) {
  * Lưu phần thưởng mini-game để khi quay lại Thị Trấn chính sẽ tự động cộng Tim/Sao & bắn thông báo.
  */
 export function queueMiniGameReward({ gameId, gameTitle, hearts = 2, stars = 20 }) {
+  const starAmount = Number(stars) || 0;
+  if (starAmount > 0) {
+    addStars(starAmount);
+  }
   try {
     const raw = localStorage.getItem(MINIGAME_REWARD_STORAGE_KEY);
     const prev = raw ? JSON.parse(raw) : [];
@@ -122,7 +197,7 @@ export function queueMiniGameReward({ gameId, gameTitle, hearts = 2, stars = 20 
       gameId,
       gameTitle,
       hearts: Number(hearts) || 0,
-      stars: Number(stars) || 0,
+      stars: starAmount,
       earnedAt: Date.now(),
     });
     localStorage.setItem(MINIGAME_REWARD_STORAGE_KEY, JSON.stringify(list));

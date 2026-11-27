@@ -523,6 +523,8 @@ export default function CozyWalkAvatar({
         onClick={handleTriggerLandmark}
         title={`${residentDisplayName} — Chạm hoặc dùng phím để đi dạo khắp đồi!`}
       >
+        {/* Bảng Tên Gỗ + Sprite bọc trong town-player-scale để chuẩn tỷ lệ Mobile/iPad mà giữ nguyên PC */}
+        <div className="town-player-scale flex flex-col items-center">
         {/* Bảng Tên Gỗ Cư Dân gắn trên đầu */}
         <div className="mb-1 px-2.5 py-0.5 rounded-full bg-[#FFE57F] border-2 border-[#593A47] shadow-[0_2px_0_#593A47] text-[10px] sm:text-[11px] font-extrabold text-[#593A47] flex items-center gap-1 whitespace-nowrap">
           <span>🌟</span>
@@ -577,6 +579,7 @@ export default function CozyWalkAvatar({
 
         {/* Đổ bóng mặt cỏ dưới chân avatar */}
         <div className="w-12 h-3.5 -mt-1 rounded-full bg-[#593A47]/20 blur-[1px]" />
+        </div>
       </div>
 
       {/* ================= 3. MODAL HƯỚNG DẪN ĐI DẠO LẦN ĐẦU Ở GIỮA MÀN HÌNH ================= */}

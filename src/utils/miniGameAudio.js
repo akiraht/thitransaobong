@@ -13,6 +13,10 @@ export const MINI_GAME_BGM_FILES = {
   racing: '/audio/minigames/bgm-racing.mp3',
   duel: '/audio/minigames/bgm-duel.mp3',
   flappy: '/audio/minigames/bgm-flappy.mp3',
+  memory: '/audio/minigames/bgm-memory.mp3',
+  star2048: '/audio/minigames/bgm-star2048.mp3',
+  snowcone: '/audio/minigames/bgm-snowcone.mp3',
+  firefly: '/audio/minigames/bgm-firefly.mp3',
 };
 
 // Giai điệu Web Audio dự phòng riêng theo không khí từng mini-game (Hz, thời lượng ms)
@@ -52,6 +56,30 @@ const SYNTH_PATTERNS = {
     wave: 'sine',
     gain: 0.055,
     notes: [659.25, 783.99, 1046.5, 783.99, 880, 1046.5, 783.99, 659.25, 587.33, 659.25, 783.99, 659.25, 523.25, 587.33, 659.25, 0],
+  },
+  memory: {
+    tempoMs: 390,
+    wave: 'sine',
+    gain: 0.048,
+    notes: [523.25, 587.33, 659.25, 783.99, 659.25, 587.33, 523.25, 440, 493.88, 587.33, 659.25, 587.33, 523.25, 0, 392, 0],
+  },
+  star2048: {
+    tempoMs: 320,
+    wave: 'triangle',
+    gain: 0.048,
+    notes: [440, 523.25, 659.25, 783.99, 659.25, 523.25, 587.33, 659.25, 440, 523.25, 587.33, 659.25, 523.25, 493.88, 440, 0],
+  },
+  snowcone: {
+    tempoMs: 215,
+    wave: 'triangle',
+    gain: 0.055,
+    notes: [659.25, 783.99, 880, 783.99, 1046.5, 880, 783.99, 659.25, 587.33, 659.25, 783.99, 659.25, 523.25, 659.25, 587.33, 0],
+  },
+  firefly: {
+    tempoMs: 270,
+    wave: 'sine',
+    gain: 0.05,
+    notes: [783.99, 659.25, 880, 783.99, 1046.5, 880, 783.99, 659.25, 587.33, 783.99, 659.25, 523.25, 587.33, 659.25, 523.25, 0],
   },
 };
 

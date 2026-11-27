@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { CHARACTER_SPRITES } from '../data/characterSprites';
 import BadgeArt from './BadgeArt';
 import ResidentAuthPanel from './ResidentAuthPanel';
+import HouseDecorTab from './HouseDecorTab';
 import {
   changeUserPassword,
   evaluatePasswordStrength,
@@ -137,6 +138,17 @@ export default function UserHouseModal({
             </button>
             <button
               type="button"
+              onClick={() => setResidentTab('decor')}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-t-2xl font-extrabold text-xs sm:text-sm border-t-[2.5px] border-x-[2.5px] -mb-[2.5px] whitespace-nowrap cursor-pointer ${
+                residentTab === 'decor'
+                  ? 'bg-white border-[#593A47] text-[#593A47]'
+                  : 'border-transparent text-[#8C6575] hover:text-[#593A47]'
+              }`}
+            >
+              🏡 Trang Trí
+            </button>
+            <button
+              type="button"
               onClick={() => setResidentTab('profile')}
               className={`px-2.5 sm:px-3 py-1.5 rounded-t-2xl font-extrabold text-xs sm:text-sm border-t-[2.5px] border-x-[2.5px] -mb-[2.5px] whitespace-nowrap cursor-pointer ${
                 residentTab === 'profile'
@@ -173,6 +185,7 @@ export default function UserHouseModal({
 
         {/* Body */}
         <div className="p-5 overflow-y-auto flex-1 space-y-5">
+          {resident.isLoggedIn && residentTab === 'decor' && <HouseDecorTab resident={resident} />}
           {!resident.isLoggedIn ? (
             <ResidentAuthPanel
               initialMode="login"

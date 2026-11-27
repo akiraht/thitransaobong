@@ -128,3 +128,242 @@
 .badge-aura-crystal {
   animation: badgeGlowPulse 2.4s ease-in-out infinite;
 }
+
+
+/* ============================================================================
+   SENIOR FE RESPONSIVE SAFETY: CHỐNG TRÀN MODAL & CHUẨN HÓA MOBILE NGANG (<= 540px)
+   ============================================================================ */
+
+/* Đảm bảo MỌI modal .kawaii-card trong overlay fixed đều cuộn mượt trong màn hình thấp */
+.fixed.inset-0 > .kawaii-card,
+.fixed.inset-0 > div > .kawaii-card {
+  max-height: 92dvh !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-height: 540px) {
+  /* 1. Tỷ lệ chuẩn cho các thành phần trên Bản Đồ 16:9 khi chiều cao thấp (Mobile Ngang) */
+  .landscape-header-wrap {
+    transform: scale(0.54) !important;
+    transform-origin: top center !important;
+  }
+
+  .town-sign-scale {
+    transform: scale(0.56) !important;
+    transform-origin: center bottom !important;
+  }
+
+  .town-shop-scale {
+    transform: scale(0.58) !important;
+    transform-origin: bottom center !important;
+  }
+
+  .town-portal-scale {
+    transform: scale(0.62) !important;
+    transform-origin: center center !important;
+  }
+
+  /* 2. Hộp thoại đáy gọn gàng trên Mobile Ngang, không che nửa bản đồ */
+  .dialogue-box {
+    max-width: 560px !important;
+  }
+  .landscape-dialogue-card {
+    padding: 0.55rem 0.9rem !important;
+    border-radius: 1.1rem !important;
+  }
+
+  /* 3. Chống tràn tất cả Modal trên Mobile Ngang */
+  .fixed.inset-0 {
+    padding: 0.45rem !important;
+  }
+  .fixed.inset-0 > .kawaii-card,
+  .fixed.inset-0 > div > .kawaii-card {
+    padding: 0.85rem 1rem !important;
+    border-radius: 1.25rem !important;
+  }
+
+  /* 4. Header Mini-Game siêu gọn trên Mobile Ngang để dành tối đa chiều cao chơi game */
+  .minigame-header-bar {
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+  }
+  .minigame-header-bar h1 {
+    font-size: 0.8rem !important;
+  }
+  .minigame-header-bar p {
+    display: none !important;
+  }
+
+  /* 5. Tiệm Bánh Bình Minh bố cục gọn hơn trên Mobile Ngang */
+  .baking-customer-avatar {
+    width: 2.35rem !important;
+    height: 2.35rem !important;
+  }
+  .baking-customer-section {
+    padding-top: 0.45rem !important;
+    padding-bottom: 0.35rem !important;
+  }
+  .baking-counter-section {
+    padding: 0.5rem 0.75rem !important;
+  }
+}
+
+
+/* ============================================================================
+   GÓI FIX QC/QA MOBILE NGANG (<= 540px) & IPAD (<= 1200px & <= 860px)
+   CAM KẾT 0 ẢNH HƯỞNG TỚI PHIÊN BẢN PC (> 1200px HOẶC > 860px)
+   ============================================================================ */
+
+/* Chống tràn toàn cục cho cả ComicSpeechModal (.comic-speech-box) */
+.fixed.inset-0 > .comic-speech-box,
+.fixed.inset-0 > div > .comic-speech-box {
+  max-height: 92dvh !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ẩn hướng dẫn phím Space trên thiết bị cảm ứng */
+@media (pointer: coarse) {
+  .dialogue-space-hint {
+    display: none !important;
+  }
+}
+
+/* Tinh chỉnh nhẹ tỷ lệ Nhân vật & NPC trên iPad (768px-1200px, height 541px-860px) */
+@media (min-height: 541px) and (max-height: 860px) and (max-width: 1200px) {
+  .town-player-scale {
+    transform: scale(0.82) !important;
+    transform-origin: bottom center !important;
+  }
+  .town-npc-scale {
+    transform: scale(0.84) !important;
+    transform-origin: bottom center !important;
+  }
+}
+
+/* Chế độ Mobile Ngang (chiều cao <= 540px) */
+@media (max-height: 540px) {
+  /* 1. Bảng tên Thị Trấn Sao Bông căn BÊN TRÁI trên Mobile để nhường đỉnh giữa cho Cổng & Lọ Sao */
+  .town-title-anchor {
+    left: max(0.5rem, env(safe-area-inset-left)) !important;
+    transform: none !important;
+    align-items: flex-start !important;
+    width: auto !important;
+    max-width: 46vw !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  .landscape-header-wrap {
+    transform: scale(0.48) !important;
+    transform-origin: top left !important;
+    margin-bottom: -2.1rem !important;
+  }
+  .landscape-star-pill {
+    margin-top: 0 !important;
+    padding: 0.15rem 0.55rem !important;
+    font-size: 10px !important;
+  }
+
+  /* 2. Tỷ lệ chuẩn Nhân vật người chơi & NPC so với Ngôi Nhà (không che nhà!) */
+  .town-player-scale {
+    transform: scale(0.48) !important;
+    transform-origin: bottom center !important;
+  }
+  .town-npc-scale {
+    transform: scale(0.50) !important;
+    transform-origin: bottom center !important;
+  }
+  .town-starjar-badge {
+    transform: scale(0.68) !important;
+    transform-origin: center center !important;
+  }
+
+  /* 3. Hộp thoại đáy gọn 1 dòng & ẩn phím Space */
+  .dialogue-space-hint {
+    display: none !important;
+  }
+  .landscape-dialogue-card p {
+    font-size: 0.78rem !important;
+    min-height: 1.5rem !important;
+    line-height: 1.35 !important;
+  }
+  .landscape-dialogue-footer {
+    margin-top: 0.35rem !important;
+    padding-top: 0.35rem !important;
+  }
+
+  /* 4. ComicSpeechModal gọn gàng trong 390px, nút đóng X nằm trong khung không bị cắt */
+  .comic-speech-box {
+    padding: 0.75rem 1rem !important;
+    border-radius: 1.25rem !important;
+    max-width: 92vw !important;
+  }
+  .comic-badge-tag {
+    position: static !important;
+    transform: none !important;
+    display: inline-block !important;
+    font-size: 0.7rem !important;
+    padding: 0.15rem 0.65rem !important;
+    margin-bottom: 0.35rem !important;
+  }
+  .comic-close-btn {
+    top: 0.5rem !important;
+    right: 0.5rem !important;
+    width: 2rem !important;
+    height: 2rem !important;
+    font-size: 0.9rem !important;
+  }
+  .comic-body-row {
+    gap: 0.75rem !important;
+    margin-top: 0.25rem !important;
+  }
+  .comic-avatar-box {
+    width: 4.75rem !important;
+    height: 4.75rem !important;
+    border-radius: 1rem !important;
+  }
+
+  /* 5. Mini-Game Tiệm Bánh Bình Minh: bố cục 2 cột ngang siêu gọn không cần cuộn dài */
+  .baking-feedback-bar {
+    padding: 0.2rem 0.5rem !important;
+    font-size: 0.68rem !important;
+  }
+  .baking-workspace-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr) !important;
+    gap: 0.5rem !important;
+    align-items: start !important;
+  }
+  .baking-workspace-grid > * {
+    margin-top: 0 !important;
+  }
+  .baking-oven-card {
+    padding: 0.5rem !important;
+    max-width: 100% !important;
+  }
+  .baking-trays-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.35rem !important;
+  }
+  .baking-trays-grid > div {
+    padding: 0.35rem !important;
+  }
+  .baking-trays-grid .grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    gap: 0.25rem !important;
+  }
+  .baking-trays-grid button {
+    padding: 0.2rem !important;
+  }
+
+  /* 6. Mini-Game Đua Ván Trượt Mây: ẩn dòng gợi ý dài để tối đa chiều cao đường đua */
+  .racing-helper-tip {
+    display: none !important;
+  }
+  .racing-controls-bar button {
+    padding-top: 0.4rem !important;
+    padding-bottom: 0.4rem !important;
+    font-size: 0.8rem !important;
+  }
+}
